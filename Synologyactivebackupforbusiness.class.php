@@ -9,6 +9,19 @@ namespace FreePBX\modules;
 
 class Synologyactivebackupforbusiness implements \BMO {
 
+
+	public static $default_agent_status_data = array(
+        'server' => '',
+        'user' => '',
+        'lastbackup' => '',
+        'nextbackup' => '',
+        'server_status' => '',
+		'info_status' => array(),
+        'portal' => '',
+		'error_code' => 0,
+		'error_msg' => ''
+    );
+
 	public function __construct($freepbx = null) {
 		if ($freepbx == null) {
 			throw new Exception("Not given a FreePBX Object");
@@ -16,10 +29,12 @@ class Synologyactivebackupforbusiness implements \BMO {
 		$this->FreePBX = $freepbx;
 		$this->db = $freepbx->Database;
 
-		$this->astspooldir  = $this->FreePBX->Config->get("ASTSPOOLDIR");
+		$this->astspooldir 	= $this->FreePBX->Config->get("ASTSPOOLDIR");
+		$this->abbclipath 	= "/usr/bin/abb-cli";
 	}
 
-	public function get_astspooldir() {
+	public function get_astspooldir()
+	{
 		return $this->astspooldir; 
 	}
 
@@ -34,145 +49,19 @@ class Synologyactivebackupforbusiness implements \BMO {
 		return $return;
 	}
 
-	public function chownFreepbx() {
+	public function chownFreepbx()
+	{
 		$files = array(
 			array('type' => 'execdir', 'path' => __DIR__."/hooks", 'perms' => 0755)
 		);
 		return $files;
 	}
 
-	//Install method. use this or install.php using both may cause weird behavior
-	public function install() {}
-	//Uninstall method. use this or install.php using both may cause weird behavior
-	public function uninstall() {}
-	//Not yet implemented
-	public function backup() {}
-	//not yet implimented
-	public function restore($backup) {}
-	//process form
-	public function doConfigPageInit($page) {}
-	//This shows the submit buttons
-	public function getActionBar($request) {
-		$buttons = array();
-		switch($_GET['display']) {
-			case 'synologyactivebackupforbusiness':
-				$buttons = array(
-					'delete' => array(
-						'name' => 'delete',
-						'id' => 'delete',
-						'value' => _('Delete')
-					),
-					'reset' => array(
-						'name' => 'reset',
-						'id' => 'reset',
-						'value' => _('Reset')
-					),
-					'submit' => array(
-						'name' => 'submit',
-						'id' => 'submit',
-						'value' => _('Submit')
-					)
-				);
-				if (empty($_GET['extdisplay'])) {
-					unset($buttons['delete']);
-				}
-			break;
-		}
-		return $buttons;
-	}
-	public function showPage(){
-		$vars = array('helloworld' => _("Hello World"));
-		return load_view(__DIR__.'/views/main.php',$vars);
-	}
-	public function ajaxRequest($req, &$setting) {
-		switch ($req) {
-			case 'getJSON':
-				return true;
-			break;
-			default:
-				return false;
-			break;
-		}
-	}
-	public function ajaxHandler(){
-		switch ($_REQUEST['command']) {
-			case 'getJSON':
-				switch ($_REQUEST['jdata']) {
-					case 'grid':
-						$ret = array();
-						/*code here to generate array*/
-						return $ret;
-					break;
-
-					default:
-						return false;
-					break;
-				}
-			break;
-
-			default:
-				return false;
-			break;
-		}
-	}
-	public function getRightNav($request) {
-		$html = 'your custom html';
-		return $html;
-	}
-
-
-
-	public function getAgentStatus() {
-		$return = array(
-
-		);
-		$file = $this->get_hook_file("status");
-		$this->runHook("get-cli-status");
-		if(file_exists($file))
-		{
-			$banliststr = file_get_contents($file);
-			// unlink($file);
-			// file_put_contents($file, '');
-
-			if (! empty($banliststr))
-			{
-				$return = @json_decode($banliststr, true);
-			}
-			
-		}
-		return $return;
-	}
-
-	public function getAgentVersion()
-	{
-		$return = "";
-		$file = $this->get_hook_file("version");
-		$this->runHook("get-cli-version");
-		if(file_exists($file))
-		{
-			$banliststr = file_get_contents($file);
-			// unlink($file);
-			// file_put_contents($file, '');
-
-			if (! empty($banliststr))
-			{
-				$app_info = @json_decode($banliststr, true);
-				if (! empty($app_info['version']))
-				{
-					$return = $app_info['version'];
-				}	
-			}
-		}
-		return $return;
-	}
-
-
-
 	public function runHook($hookname, $params = false)
 	{
 		// Runs a new style Syadmin hook
 		if (!file_exists("/etc/incron.d/sysadmin")) {
-			throw new \Exception("Sysadmin RPM not up to date, or not a known OS. Can not start System Firewall. See http://bit.ly/fpbxfirewall");
+			throw new \Exception("Sysadmin RPM not up to date, or not a known OS.");
 		}
 
 		$basedir = $this->get_astspooldir()."/incron";
@@ -260,5 +149,169 @@ class Synologyactivebackupforbusiness implements \BMO {
 		}
 		return true;
 	}
+
+	public function install() {}
+	public function uninstall() {}
+	
+	public function backup() {}
+	public function restore($backup) {}
+	
+	
+	public function doConfigPageInit($page) {}
+	
+	public function getActionBar($request) {}
+	
+	public function getRightNav($request) {}
+	
+	public function showPage($page, $params = array())
+	{
+		$data = array(
+			"syno" 		=> $this,
+			'request'	=> $_REQUEST,
+			'page' 		  => $page
+		);
+		$data = array_merge($data, $params);
+		switch ($page) 
+		{
+			case "main":
+				$data_return = load_view(__DIR__.'/views/main.php', $data);
+				break;
+			
+			case "main.steps.install":
+				$data_return = load_view(__DIR__.'/views/main.steps.install.php', $data);
+				break;
+
+			default:
+				$data_return = sprintf(_("Page Not Found (%s)!!!!"), $page);
+		}
+		return $data_return;
+	}
+
+	public function ajaxRequest($req, &$setting)
+	{
+		// ** Allow remote consultation with Postman **
+		// ********************************************
+		$setting['authenticate'] = false;
+		$setting['allowremote'] = true;
+		return true;
+		// ********************************************
+		switch($req)
+		{
+			case "getagentversion":
+			case "getagentstatus":
+				return true;
+				break;
+
+			default:
+				return false;
+		}
+		return false;
+	}
+
+	public function ajaxHandler()
+	{
+		$command = isset($_REQUEST['command']) ? trim($_REQUEST['command']) : '';
+		switch ($command)
+		{
+			case 'getagentversion':
+				return array("status" => true, "data" => $this->getAgentVersion());
+				break;
+
+			case 'getagentstatus':
+					return array("status" => true, "data" => $this->getAgentStatus());
+					break;
+
+			default:
+				return array("status" => false, "message" => _("Command not found!"), "command" => $command);
+		}
+	}
+	
+
+	public function isAgentInstalled()
+	{
+		return file_exists($this->abbclipath);
+	}
+
+	public function getAgentStatusDefault()
+	{
+		return self::$default_agent_status_data;
+	}
+
+	public function getAgentStatus()
+	{
+		$return = $this->getAgentStatusDefault();
+		$file = $this->get_hook_file("status");
+		$this->runHook("get-cli-status");
+		if(file_exists($file))
+		{
+			$linesfilehook = file_get_contents($file);
+			// unlink($file);
+
+			if (empty($linesfilehook))
+			{
+				$return['error_code'] = 511;
+				$return['error_msg'] = _("Hook file is emtry!");
+			}
+			else
+			{
+				$return = @json_decode($linesfilehook, true);
+				$return['lastbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $return['lastbackup']);
+				$return['nextbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $return['nextbackup']);
+
+				if ($return['server_status'] == "Idle - Completed")
+				{
+					$return['info_status']['status'] = "Completed";
+				}
+				elseif ($return['server_status'] == "Idle - Canceled")
+				{
+					$return['info_status']['status'] = "Canceled";
+				}
+				elseif (strpos($return['server_status'] , 'Backing up...') !== false)
+				{
+					$return['info_status']['status'] = "BackingUp";
+					$return['info_status']['info'] = trim(explode("-", $return['server_status'], 2)[1]);
+				}
+				
+				// 
+    			// 
+    			// Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
+				
+
+
+			}
+		}
+		else
+		{
+			$return['error_code'] = 510;
+			$return['error_msg'] = _("The file that returns the hook information does not exist!");
+		}
+		return $return;
+	}
+
+	public function getAgentVersion()
+	{
+		$return = "";
+		if ($this->isAgentInstalled())
+		{
+			$file = $this->get_hook_file("version");
+			$this->runHook("get-cli-version");
+			if(file_exists($file))
+			{
+				$linesfilehook = file_get_contents($file);
+				// unlink($file);
+
+				if (! empty($linesfilehook))
+				{
+					$app_info = @json_decode($linesfilehook, true);
+					if (! empty($app_info['version']))
+					{
+						$return = $app_info['version'];
+					}	
+				}
+			}
+		}
+		return $return;
+	}
+
 
 }
