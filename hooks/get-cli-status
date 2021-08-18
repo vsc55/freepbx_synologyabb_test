@@ -1,0 +1,125 @@
+#!/usr/bin/env php
+<?php
+    include_once '/etc/freepbx.conf';
+    error_reporting(E_ALL);
+    $syno = \FreePBX::Synologyactivebackupforbusiness();
+
+
+    // Make sure we have a param
+    // if (empty($argv[1])) {
+    //     throw new \Exception("Needs a param");
+    // }
+
+    // Underp the base64 that the param is using.
+    // $b = str_replace('_', '/', $argv[1]);
+    // $settings = @json_decode(gzuncompress(@base64_decode($b)), true);
+
+    // if (!is_array($settings)) {
+    //     throw new \Exception("Invalid param");
+    // }
+
+    
+
+
+    // ----------------- return ---------------------
+    // # /usr/bin/abb-cli -s
+    // Server address: IP SERVER                        Username: UserName
+    // Last backup time: 2021-08-18 03:00               Next backup time: 2021-08-19 03:00
+    // Service Status: Idle - Completed
+    //                 Idle - Canceled
+
+
+    // Restore portal: https://ipserver/?launchApp=SYNO.SDS.ActiveBackupPortal.Application&launchParam=device_id%fasdf
+
+    // For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
+    // Retrieved service status successfully
+
+
+
+
+    // # /usr/bin/abb-cli -s
+    // Server address: IP SERVER                        Username: UserCopias
+    // Last backup time: 2021-08-18 14:26               Next backup time:  -
+    // Service Status: Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
+
+    // Restore portal: https://ipserver/?launchApp=SYNO.SDS.ActiveBackupPortal.Application&launchParam=device_id%fasdf
+
+    // For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
+    // Retrieved service status successfully
+
+
+    // ----------------- return ---------------------
+
+
+    $data_return = $syno->getAgentStatusDefault();
+    $file = $syno->get_hook_file("status");
+    if (file_exists($file)) { unlink($file); }
+
+
+    if (! $syno->isAgentInstalled())
+    {
+        $data_return['error_code'] = 501;
+        $data_return['error_msg'] = _("Synology Agent not Installed!");
+    }
+    else
+    {
+        $cmd = $syno->abbclipath . " -s";
+        exec($cmd, $out, $ret);
+
+        if($ret === 0 && is_array($out))
+        {
+            foreach($out as $line)
+            {
+                if (empty($line))
+                {
+                    continue;
+                }
+                
+                if (strpos($line, 'Server address:') !== false)
+                {
+                    $data_return['server'] = substr($line, 0, strpos($line, 'Username:'));
+                    $data_return['server'] = trim(explode("Server address:", $data_return['server'], 2)[1]);
+                }        
+
+                if (strpos($line, 'Username:') !== false)
+                {
+                    $data_return['user'] = trim(explode("Username:", $line, 2)[1]);
+                }
+
+                if (strpos($line, 'Last backup time:') !== false)
+                {
+                    $data_return['lastbackup'] = substr($line, 0, strpos($line, 'Next backup time:'));
+                    $data_return['lastbackup'] = trim(explode("Last backup time:", $data_return['lastbackup'], 2)[1]);
+                    // $data_return['lastbackup'] = DateTime::createFromFormat('Y-m-d H:i', $data_return['lastbackup']);
+                }
+
+                if (strpos($line, 'Next backup time:') !== false)
+                {
+                    $data_return['nextbackup'] = trim(explode("Next backup time:", $line, 2)[1]);
+                    // $data_return['nextbackup'] = DateTime::createFromFormat('Y-m-d H:i', $data_return['nextbackup']);
+                }
+
+                if (strpos($line, 'Service Status:') !== false)
+                {
+                    $data_return['server_status'] = trim(explode(":", $line, 2)[1]);
+                }
+
+                if (strpos($line, 'Restore portal:') !== false)
+                {
+                    $data_return['portal'] = trim(explode(":", $line, 2)[1]);
+                }
+            }
+        }
+        else
+        {
+            $data_return['error_code'] = 502;
+            $data_return['error_msg'] = _("Synology Agent not return info!");
+        }
+        file_put_contents($file, json_encode($data_return));
+        chown($file, 'asterisk');
+    }
+
+    print_r($data_return);
+    echo "\n";
+    exit();
+?>

@@ -1,0 +1,15 @@
+
+<module>
+  <rawname>synologyactivebackupforbusiness</rawname>
+  <name>Synology Active Backup for Business</name>
+  <version>14.0.1</version>
+  <publisher>Javier Pastor Garcia aka VSC55</publisher>
+  <license>AGPLv3</license>
+  <changelog>*14.0.1* Initial release</changelog>
+  <category>Admin</category>
+  <description>Backup con Synology Active Backup for Business</description>
+  <menuitems>
+    <synologyactivebackupforbusiness>Synology Active Backup for Business</synologyactivebackupforbusiness>
+  </menuitems>
+  <supported>15.0</supported>
+</module>

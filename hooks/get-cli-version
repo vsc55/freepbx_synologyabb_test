@@ -1,0 +1,47 @@
+#!/usr/bin/env php
+<?php
+    include_once '/etc/freepbx.conf';
+    error_reporting(E_ALL);
+    $syno = \FreePBX::Synologyactivebackupforbusiness();
+
+
+    // Make sure we have a param
+    // if (empty($argv[1])) {
+    //     throw new \Exception("Needs a param");
+    // }
+
+    // Underp the base64 that the param is using.
+    // $b = str_replace('_', '/', $argv[1]);
+    // $settings = @json_decode(gzuncompress(@base64_decode($b)), true);
+
+    // if (!is_array($settings)) {
+    //     throw new \Exception("Invalid param");
+    // }
+
+
+    $file = $syno->get_hook_file("version");
+    if (file_exists($file)) { unlink($file); }
+    
+
+    if (! $syno->isAgentInstalled())
+    {
+        //TODO: Msg Debug????
+    }
+    else
+    {
+        $cmd = $syno->abbclipath . " -v";
+        exec($cmd, $out, $ret);
+
+        if($ret === 0 && is_array($out) && count($out) == 1)
+        {
+            $version = explode(":", $out[0]);
+            $save_data = array(
+                'app' => trim($version[0]),
+                'version' => trim($version[1])
+            );
+            file_put_contents($file, json_encode($save_data));
+            chown($file, 'asterisk');
+        }
+    }
+    exit();
+?>
