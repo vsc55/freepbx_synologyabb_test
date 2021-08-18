@@ -1,3 +1,4 @@
+var timerRefresInfo;
 
 $(document).ready(function()
 {
@@ -6,6 +7,7 @@ $(document).ready(function()
 
 function loadStatus(e)
 {
+    timerStop();
 	if (e != undefined)
 	{
 		e.preventDefault();
@@ -34,11 +36,13 @@ function loadStatus(e)
             $("#info_lastbackup").text(status.lastbackup);
             $("#info_nextbackup").text(status.nextbackup);
             $("#info_status").text(status.server_status);
-            $("#info_portal").attr("href", status.portal);
-            
-            
-			
-			
+            $("#info_portal").attr("href", status.portal);	
 		}
+        timerRefresInfo = setTimeout(loadStatus, 2000);
 	});
 }
+
+function timerStop()
+{
+    clearTimeout(timerRefresInfo);
+} 

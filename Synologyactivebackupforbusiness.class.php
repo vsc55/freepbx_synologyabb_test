@@ -191,9 +191,9 @@ class Synologyactivebackupforbusiness implements \BMO {
 	{
 		// ** Allow remote consultation with Postman **
 		// ********************************************
-		$setting['authenticate'] = false;
-		$setting['allowremote'] = true;
-		return true;
+		// $setting['authenticate'] = false;
+		// $setting['allowremote'] = true;
+		// return true;
 		// ********************************************
 		switch($req)
 		{
@@ -268,16 +268,11 @@ class Synologyactivebackupforbusiness implements \BMO {
 				}
 				elseif (strpos($return['server_status'] , 'Backing up...') !== false)
 				{
+					// Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
 					$return['info_status']['status'] = "BackingUp";
 					$return['info_status']['info'] = trim(explode("-", $return['server_status'], 2)[1]);
 				}
-				
-				// 
-    			// 
-    			// Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
-				
-
-
+    			
 			}
 		}
 		else

@@ -1,6 +1,6 @@
 <?php
     $info_status = $syno->getAgentStatus();
-    echo sprintf('<div class="alert alert-info" role="alert">%s %s</div>', _("Agent Version:"), $syno->getAgentVersion());
+    echo sprintf('<div class="alert alert-info" role="alert"><b>%s</b> %s</div>', _("Agent Version:"), $syno->getAgentVersion());
 ?>
 
 
@@ -29,11 +29,13 @@
     </div>
 </div>
 
-<textarea>
+
 <?php 
-    print_r($info_status); 
+    // echo "<textarea>";
+    // print_r($info_status); 
+    // echo "</textarea>";
 ?>
-</textarea>
+
 
 
 <!-- <form>
