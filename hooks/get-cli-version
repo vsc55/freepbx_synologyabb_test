@@ -18,6 +18,10 @@
     //     throw new \Exception("Invalid param");
     // }
 
+    $data_return = array(
+        'error_code' => -1,
+        'error_msg' => ""
+    );
 
     $file = $syno->get_hook_file("version");
     if (file_exists($file)) { unlink($file); }
@@ -25,7 +29,8 @@
 
     if (! $syno->isAgentInstalled())
     {
-        //TODO: Msg Debug????
+        $data_return['error_code'] = 501;
+        $data_return['error_msg'] = _("Synology Agent not Installed!");
     }
     else
     {
@@ -35,13 +40,28 @@
         if($ret === 0 && is_array($out) && count($out) == 1)
         {
             $version = explode(":", $out[0]);
-            $save_data = array(
-                'app' => trim($version[0]),
-                'version' => trim($version[1])
-            );
-            file_put_contents($file, json_encode($save_data));
-            chown($file, 'asterisk');
+            $version = array_map('trim', $version);
+            $data_return['app']     = $version[0];
+            $data_return['version'] = $version[1];
+            $data_return['error_code'] = 0;
         }
+        else
+        {
+            $data_return['error_code'] = 502;
+            $data_return['error_msg'] = _("Synology Agent not return info!");
+        }
+
+        file_put_contents($file, json_encode($data_return));
+        chown($file, 'asterisk');
     }
+
+    // print_r($data_return);
+    // echo "\n";
+
+    if ($data_return['error_code'] != 0)
+    {
+        dbug("Error Code (" .$data_return['error_code']. ")!! " . $data_return['error_msg']);
+    }
+
     exit();
 ?>

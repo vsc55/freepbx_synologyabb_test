@@ -1,11 +1,13 @@
 <?php
-namespace FreePBX\modules;
-/*
- * Class stub for BMO Module class
- * In _Construct you may remove the database line if you don't use it
- * In getActionbar change extdisplay to align with whatever variable you use to decide if the page is in edit mode.
- *
+/**
+ * 
+ * License for all code of this FreePBX module can be found in the license file inside the module directory
+ * @copyright 2021 Javier Pastor Garcia
+ * 
  */
+namespace FreePBX\modules;
+include __DIR__."/vendor/autoload.php";
+
 
 class Synologyactivebackupforbusiness implements \BMO {
 
@@ -16,9 +18,8 @@ class Synologyactivebackupforbusiness implements \BMO {
         'lastbackup' => '',
         'nextbackup' => '',
         'server_status' => '',
-		'info_status' => array(),
         'portal' => '',
-		'error_code' => 0,
+		'error_code' => -1,
 		'error_msg' => ''
     );
 
@@ -191,9 +192,9 @@ class Synologyactivebackupforbusiness implements \BMO {
 	{
 		// ** Allow remote consultation with Postman **
 		// ********************************************
-		// $setting['authenticate'] = false;
-		// $setting['allowremote'] = true;
-		// return true;
+		$setting['authenticate'] = false;
+		$setting['allowremote'] = true;
+		return true;
 		// ********************************************
 		switch($req)
 		{
@@ -258,21 +259,57 @@ class Synologyactivebackupforbusiness implements \BMO {
 				$return['lastbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $return['lastbackup']);
 				$return['nextbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $return['nextbackup']);
 
-				if ($return['server_status'] == "Idle - Completed")
+				$t_status_info = preg_split('/[-]+/', $return['server_status']);
+				$t_status_info = array_map('trim', $t_status_info);	//Trim All Elements Array
+				
+				switch (strtolower($t_status_info[0]))
 				{
-					$return['info_status']['status'] = "Completed";
+					case strtolower("Idle"):
+						switch (strtolower($t_status_info[1]))
+						{
+							case strtolower("Completed"):
+								// Idle - Completed
+								$return['info_status'] = array ('status_code' => 1, 'status' => _("Completed"));
+								break;
+
+							case strtolower("Canceled"):
+								//Idle - Canceled
+								$return['info_status'] = array ('status_code' => 2, 'status' => _("Canceled"));
+								break;
+
+							default:
+								$return['info_status'] = array ('status_code' => 99991, 'status' => _("Status Unknown"));
+								dbug('Warning (99991)! Status Idle not controlled [' . $return['server_status'] . "]");
+						}
+						break;
+
+					case strtolower("Backing up..."):
+						// Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
+
+						$t_status_info['progress'] = preg_split('/[\(\)]+/', $t_status_info[1]);
+						$t_status_info['progress'] = array_map('trim', $t_status_info['progress']);
+
+						$t_status_info['progressdata'] = preg_split('/[\/]+/', $t_status_info['progress'][0]);
+						$t_status_info['progressdata'] = array_map('trim', $t_status_info['progressdata']);
+						
+						$return['info_status'] = array(
+							'status'		=> _("BackingUp"),
+							'status_code'	=> 3,
+							'progress'		=> array(
+								'all' 	=> $t_status_info[1],
+								'send' 	=> \ByteUnits\parse($t_status_info['progressdata'][0])->numberOfBytes(),
+								'total' => \ByteUnits\parse($t_status_info['progressdata'][1])->numberOfBytes(),
+								'speed' => $t_status_info['progress'][1],
+							)
+						);
+						break;
+
+					default:
+						$return['info_status'] = array ('status_code' => 99990, 'status' => _("Status Unknown"));
+						dbug('Warning (99990)! Status not controlled [' . $return['server_status'] . "]");
 				}
-				elseif ($return['server_status'] == "Idle - Canceled")
-				{
-					$return['info_status']['status'] = "Canceled";
-				}
-				elseif (strpos($return['server_status'] , 'Backing up...') !== false)
-				{
-					// Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
-					$return['info_status']['status'] = "BackingUp";
-					$return['info_status']['info'] = trim(explode("-", $return['server_status'], 2)[1]);
-				}
-    			
+
+				$return['error_code'] = 0;
 			}
 		}
 		else
@@ -280,6 +317,8 @@ class Synologyactivebackupforbusiness implements \BMO {
 			$return['error_code'] = 510;
 			$return['error_msg'] = _("The file that returns the hook information does not exist!");
 		}
+
+		if ($return['error_code'] != 0) { dbug("Error Code (" .$return['error_code']. ")!! " . $return['error_msg']); }
 		return $return;
 	}
 
