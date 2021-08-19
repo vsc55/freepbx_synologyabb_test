@@ -31,7 +31,7 @@
 
 
 <?php 
-    // echo "<textarea>";
+    // echo '<textarea  rows="10" cols="200">';
     // print_r($info_status); 
     // echo "</textarea>";
 ?>

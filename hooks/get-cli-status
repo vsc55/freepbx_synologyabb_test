@@ -90,13 +90,11 @@
                 {
                     $data_return['lastbackup'] = substr($line, 0, strpos($line, 'Next backup time:'));
                     $data_return['lastbackup'] = trim(explode("Last backup time:", $data_return['lastbackup'], 2)[1]);
-                    // $data_return['lastbackup'] = DateTime::createFromFormat('Y-m-d H:i', $data_return['lastbackup']);
                 }
 
                 if (strpos($line, 'Next backup time:') !== false)
                 {
                     $data_return['nextbackup'] = trim(explode("Next backup time:", $line, 2)[1]);
-                    // $data_return['nextbackup'] = DateTime::createFromFormat('Y-m-d H:i', $data_return['nextbackup']);
                 }
 
                 if (strpos($line, 'Service Status:') !== false)
@@ -109,6 +107,7 @@
                     $data_return['portal'] = trim(explode(":", $line, 2)[1]);
                 }
             }
+            $data_return['error_code'] = 0;
         }
         else
         {
@@ -119,7 +118,12 @@
         chown($file, 'asterisk');
     }
 
-    print_r($data_return);
-    echo "\n";
+    if ($data_return['error_code'] != 0)
+    {
+        dbug("Error Code (" .$data_return['error_code']. ")!! " . $data_return['error_msg']);
+    }
+
+    // print_r($data_return);
+    // echo "\n";
     exit();
 ?>
