@@ -63,7 +63,7 @@
     }
     else
     {
-        $cmd = $syno->abbclipath . " -s";
+        $cmd = $syno->get_abbclipath() . " -s";
         exec($cmd, $out, $ret);
 
         if($ret === 0 && is_array($out))

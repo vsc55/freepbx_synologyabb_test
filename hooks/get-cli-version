@@ -34,7 +34,7 @@
     }
     else
     {
-        $cmd = $syno->abbclipath . " -v";
+        $cmd = $syno->get_abbclipath() . " -v";
         exec($cmd, $out, $ret);
 
         if($ret === 0 && is_array($out) && count($out) == 1)

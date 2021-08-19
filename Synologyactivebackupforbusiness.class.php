@@ -31,12 +31,17 @@ class Synologyactivebackupforbusiness implements \BMO {
 		$this->db = $freepbx->Database;
 
 		$this->astspooldir 	= $this->FreePBX->Config->get("ASTSPOOLDIR");
-		$this->abbclipath 	= "/usr/bin/abb-cli";
+		// $this->abbclipath 	= "/usr/bin/abb-cli";
 	}
 
 	public function get_astspooldir()
 	{
 		return $this->astspooldir; 
+	}
+
+	public function get_abbclipath()
+	{
+		return $this->FreePBX->Config()->get('SYNOLOGYABFBABBCLI');
 	}
 
 	public function get_hook_file($hookname)
@@ -151,7 +156,22 @@ class Synologyactivebackupforbusiness implements \BMO {
 		return true;
 	}
 
-	public function install() {}
+	public function install()
+	{
+		$set = array();
+		$set['value'] = '/usr/bin/abb-cli';
+		$set['defaultval'] =& $set['value'];
+		$set['readonly'] = 0;
+		$set['hidden'] = 0;
+		$set['level'] = 0;
+		// $set['module'] = 'synologyactivebackupforbusiness';  //disabled as it generates error, Fix FREEPBX-22756
+		$set['category'] = 'Synology Active Backup for Business';
+		$set['emptyok'] = 1;
+		$set['name'] = 'Path for abb-cli';
+		$set['description'] = 'The default path to abb-cli. overwrite as needed.';
+		$set['type'] = CONF_TYPE_TEXT;
+		$this->FreePBX->Config->define_conf_setting('SYNOLOGYABFBABBCLI', $set, true);
+	}
 	public function uninstall() {}
 	
 	public function backup() {}
@@ -230,7 +250,7 @@ class Synologyactivebackupforbusiness implements \BMO {
 
 	public function isAgentInstalled()
 	{
-		return file_exists($this->abbclipath);
+		return file_exists($this->get_abbclipath());
 	}
 
 	public function getAgentStatusDefault()
