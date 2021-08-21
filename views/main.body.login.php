@@ -1,0 +1,18 @@
+<form>
+  <div class="form-group">
+    <label for="ABBServer">IP/Address Server</label>
+    <input type="text" class="form-control" id="ABBServer" aria-describedby="serverHelp" placeholder="nas.example.com">
+    <small id="serverHelp" class="form-text text-muted">Active Backup for Business server IP address.</small>
+  </div>
+  <div class="form-group">
+    <label for="ABBUser">User</label>
+    <input type="text" class="form-control" id="ABBUser" aria-describedby="userHelp" placeholder="Username">
+    <small id="userHelp" class="form-text text-muted">User with which this equipment will be added to the server.</small>
+  </div>
+  <div class="form-group">
+    <label for="ABBPassword">Password</label>
+    <input type="password" class="form-control" id="ABBPassword" placeholder="Password">
+  </div>
+  
+  <button type="submit" class="btn btn-success btn-lg btn-block">Conectar</button>
+</form>

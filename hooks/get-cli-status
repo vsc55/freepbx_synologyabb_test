@@ -5,47 +5,101 @@
     $syno = \FreePBX::Synologyactivebackupforbusiness();
 
 
-    // Make sure we have a param
-    // if (empty($argv[1])) {
-    //     throw new \Exception("Needs a param");
-    // }
+    // ----------------- return run command---------------------
 
-    // Underp the base64 that the param is using.
-    // $b = str_replace('_', '/', $argv[1]);
-    // $settings = @json_decode(gzuncompress(@base64_decode($b)), true);
-
-    // if (!is_array($settings)) {
-    //     throw new \Exception("Invalid param");
-    // }
-
-    
+    // ------ Aun no se ha configurado la conexion con el servidor
+    // # abb-cli -s
+    // No connection found
+    // # abb-cli -l
+    // No connection found
+    // # abb-cli -r
+    // Failed to access connection config file
+    // ------------------------
 
 
-    // ----------------- return ---------------------
+
+
+    // ------- Cuando ya estamos conectados a un servidor ---------------
+    //
+
+    // @@@ RECIEN CONECTADO SIN NINGUNA COPIA AUN
+    //
+    // # abb-cli -s
+    // Server address: IP SERVER                        Username: UserName
+    // Last backup time:  -                             Next backup time: 2021-08-20 01:00
+    // Service Status: Idle
+    //
+    // Restore portal: https://ipserver.cerebelum.lan/?launchApp=SYNO.SDS.ActiveBackupPortal.Application&launchParam=device_id%fasdf
+    //
+    // For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
+    // Retrieved service status successfully
+    //
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+
+    // @@@ ULTIMA COPIA CANCELADA
+    //
+    // # /usr/bin/abb-cli -s
+    // Server address: IP SERVER                        Username: UserName
+    // Last backup time: 2021-08-18 03:00               Next backup time: 2021-08-19 03:00
+    // Service Status: Idle - Canceled
+    //
+    // Restore portal: https://ipserver/?launchApp=SYNO.SDS.ActiveBackupPortal.Application&launchParam=device_id%fasdf
+    //
+    // For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
+    // Retrieved service status successfully
+    //
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+
+    // @@@ ULTIMA COPIA OK 
+    //
     // # /usr/bin/abb-cli -s
     // Server address: IP SERVER                        Username: UserName
     // Last backup time: 2021-08-18 03:00               Next backup time: 2021-08-19 03:00
     // Service Status: Idle - Completed
-    //                 Idle - Canceled
-
-
+    //
     // Restore portal: https://ipserver/?launchApp=SYNO.SDS.ActiveBackupPortal.Application&launchParam=device_id%fasdf
-
+    //
     // For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
     // Retrieved service status successfully
+    //
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+    
 
-
-
+    // @@@ COPIA EN CURSO.....
+    //
     // # /usr/bin/abb-cli -s
     // Server address: IP SERVER                        Username: UserCopias
     // Last backup time: 2021-08-18 14:26               Next backup time:  -
     // Service Status: Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
-
+    //
     // Restore portal: https://ipserver/?launchApp=SYNO.SDS.ActiveBackupPortal.Application&launchParam=device_id%fasdf
+    //
+    // For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
+    // Retrieved service status successfully
+    //
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+
+    // @@@ EL AGENTE HA SIDO BORRADO DEL SERVIDOR
+    //
+    // # abb-cli -s
+    // Server address: IP SERVER                        Username: UserCopias
+    // Last backup time:  -                             Next backup time:  -
+    // Service Status: Idle
+
+    // Restore portal:  -
 
     // For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
     // Retrieved service status successfully
+    //
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
 
 
     // ----------------- return ---------------------
@@ -63,10 +117,21 @@
     }
     else
     {
-        $cmd = $syno->get_abbclipath() . " -s";
+        $cmd = $syno->get_abbclipath() . " -s 2>&1";
         exec($cmd, $out, $ret);
+        $data_return['exec_ret'] = $ret;
 
-        if($ret === 0 && is_array($out))
+        if (! in_array($ret, array(0, 5), true))
+        {
+            $data_return['error_code'] = 503;
+            $data_return['error_msg'] = _("Synology Agent return code not controlled!");
+        }
+        elseif ( ! is_array($out) )
+        {
+            $data_return['error_code'] = 502;
+            $data_return['error_msg'] = _("Synology Agent not return info!");
+        }
+        else
         {
             foreach($out as $line)
             {
@@ -75,6 +140,24 @@
                     continue;
                 }
                 
+                if ( $line == 'No connection found' )
+                {
+                    $data_return['server_status'] = $line;
+                    continue;
+                }
+
+                if (strpos($line, 'Service Status:') !== false)
+                {
+                    $data_return['server_status'] = trim(explode(":", $line, 2)[1]);
+                    continue;
+                }
+
+                if (strpos($line, 'Restore portal:') !== false)
+                {
+                    $data_return['portal'] = trim(explode(":", $line, 2)[1]);
+                    continue;
+                }
+
                 if (strpos($line, 'Server address:') !== false)
                 {
                     $data_return['server'] = substr($line, 0, strpos($line, 'Username:'));
@@ -96,33 +179,20 @@
                 {
                     $data_return['nextbackup'] = trim(explode("Next backup time:", $line, 2)[1]);
                 }
-
-                if (strpos($line, 'Service Status:') !== false)
-                {
-                    $data_return['server_status'] = trim(explode(":", $line, 2)[1]);
-                }
-
-                if (strpos($line, 'Restore portal:') !== false)
-                {
-                    $data_return['portal'] = trim(explode(":", $line, 2)[1]);
-                }
             }
             $data_return['error_code'] = 0;
         }
-        else
-        {
-            $data_return['error_code'] = 502;
-            $data_return['error_msg'] = _("Synology Agent not return info!");
-        }
-        file_put_contents($file, json_encode($data_return));
-        chown($file, 'asterisk');
     }
+
+    file_put_contents($file, json_encode($data_return));
+    chown($file, 'asterisk');
 
     if ($data_return['error_code'] != 0)
     {
-        dbug("Error Code (" .$data_return['error_code']. ")!! " . $data_return['error_msg']);
+        $syno->logger->error( sprintf("Synology ABB / hook / get-cli-status - Error Code (%s): %s", $data_return['error_code'], $data_return['error_msg']) ) ;
     }
 
+    // dbug($data_return);
     // print_r($data_return);
     // echo "\n";
     exit();

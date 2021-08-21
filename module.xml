@@ -1,13 +1,13 @@
-
 <module>
   <rawname>synologyactivebackupforbusiness</rawname>
+  <repo>standard</repo>
   <name>Synology Active Backup for Business</name>
-  <version>14.0.1</version>
-  <publisher>Javier Pastor Garcia aka VSC55</publisher>
-  <license>AGPLv3</license>
-  <changelog>*14.0.1* Initial release</changelog>
+  <version>15.0.1</version>
   <category>Admin</category>
-  <description>Backup con Synology Active Backup for Business</description>
+  <publisher>Javier Pastor Garcia aka VSC55</publisher>
+  <description>Interface to configure and monitor backup status with synology active backup for business</description>
+  <changelog>*15.0.1* Initial release</changelog>
+  <license>AGPLv3</license> 
   <menuitems>
     <synologyactivebackupforbusiness>Synology Active Backup for Business</synologyactivebackupforbusiness>
   </menuitems>

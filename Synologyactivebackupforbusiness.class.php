@@ -20,15 +20,17 @@ class Synologyactivebackupforbusiness implements \BMO {
         'server_status' => '',
         'portal' => '',
 		'error_code' => -1,
-		'error_msg' => ''
+		'error_msg' => '',
+		'exec_ret' => -1,
     );
 
 	public function __construct($freepbx = null) {
 		if ($freepbx == null) {
 			throw new Exception("Not given a FreePBX Object");
 		}
-		$this->FreePBX = $freepbx;
-		$this->db = $freepbx->Database;
+		$this->FreePBX 	= $freepbx;
+		$this->db 		= $freepbx->Database;
+		$this->logger 	= $freepbx->Logger()->getDriver('freepbx');
 
 		$this->astspooldir 	= $this->FreePBX->Config->get("ASTSPOOLDIR");
 		// $this->abbclipath 	= "/usr/bin/abb-cli";
@@ -158,6 +160,7 @@ class Synologyactivebackupforbusiness implements \BMO {
 
 	public function install()
 	{
+		outn(_("Upgrading configs.."));
 		$set = array();
 		$set['value'] = '/usr/bin/abb-cli';
 		$set['defaultval'] =& $set['value'];
@@ -171,6 +174,7 @@ class Synologyactivebackupforbusiness implements \BMO {
 		$set['description'] = 'The default path to abb-cli. overwrite as needed.';
 		$set['type'] = CONF_TYPE_TEXT;
 		$this->FreePBX->Config->define_conf_setting('SYNOLOGYABFBABBCLI', $set, true);
+		out(_("Done!"));
 	}
 	public function uninstall() {}
 	
@@ -200,6 +204,10 @@ class Synologyactivebackupforbusiness implements \BMO {
 			
 			case "main.steps.install":
 				$data_return = load_view(__DIR__.'/views/main.steps.install.php', $data);
+				break;
+
+			case "main.body.login":
+				$data_return = load_view(__DIR__.'/views/main.body.login.php', $data);
 				break;
 
 			default:
@@ -253,14 +261,25 @@ class Synologyactivebackupforbusiness implements \BMO {
 		return file_exists($this->get_abbclipath());
 	}
 
+
 	public function getAgentStatusDefault()
 	{
 		return self::$default_agent_status_data;
 	}
 
+
 	public function getAgentStatus()
 	{
+		//1 Completed
+		//2 Cancel
+		//3 Backup en curso
+		//4 No conectado
+		//99990 - status desconocido
+		//99991 - status Idel desconocido
+
+
 		$return = $this->getAgentStatusDefault();
+
 		$file = $this->get_hook_file("status");
 		$this->runHook("get-cli-status");
 		if(file_exists($file))
@@ -278,6 +297,9 @@ class Synologyactivebackupforbusiness implements \BMO {
 				$return = @json_decode($linesfilehook, true);
 				$return['lastbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $return['lastbackup']);
 				$return['nextbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $return['nextbackup']);
+
+				$return['html']['body'] = "";
+				$return['html']['force'] = false;
 
 				$t_status_info = preg_split('/[-]+/', $return['server_status']);
 				$t_status_info = array_map('trim', $t_status_info);	//Trim All Elements Array
@@ -299,7 +321,6 @@ class Synologyactivebackupforbusiness implements \BMO {
 
 							default:
 								$return['info_status'] = array ('status_code' => 99991, 'status' => _("Status Unknown"));
-								dbug('Warning (99991)! Status Idle not controlled [' . $return['server_status'] . "]");
 						}
 						break;
 
@@ -324,9 +345,20 @@ class Synologyactivebackupforbusiness implements \BMO {
 						);
 						break;
 
+					case strtolower("No connection found"):
+						$return['info_status'] = array ('status_code' => 4, 'status' => _("NoConnection"));
+						$return['html']['body'] = $this->showPage("main.body.login");
+						//TODO: Debug!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+						$return['html']['force'] = true;
+						break;
+
 					default:
 						$return['info_status'] = array ('status_code' => 99990, 'status' => _("Status Unknown"));
-						dbug('Warning (99990)! Status not controlled [' . $return['server_status'] . "]");
+				}
+
+				if ($return['info_status']['status_code'] >= 99990 )
+				{
+					$this->logger->warning( sprintf("Synology ABB / getAgentStatus - Warning Code (%s): Status not controlled [%s]", $return['info_status']['status_code'], $return['server_status']) );
 				}
 
 				$return['error_code'] = 0;
@@ -338,9 +370,16 @@ class Synologyactivebackupforbusiness implements \BMO {
 			$return['error_msg'] = _("The file that returns the hook information does not exist!");
 		}
 
-		if ($return['error_code'] != 0) { dbug("Error Code (" .$return['error_code']. ")!! " . $return['error_msg']); }
+		if ($return['error_code'] != 0)
+		{
+			$this->logger->error( sprintf("Synology ABB / getAgentStatus - Error Code (%s): %s", $return['error_code'], $return['error_msg']) ) ;
+		}
+		
+		$return['agent_version'] = $this->getAgentVersion();
+
 		return $return;
 	}
+
 
 	public function getAgentVersion()
 	{
@@ -354,15 +393,30 @@ class Synologyactivebackupforbusiness implements \BMO {
 				$linesfilehook = file_get_contents($file);
 				// unlink($file);
 
-				if (! empty($linesfilehook))
+				if (empty($linesfilehook))
+				{
+					$this->logger->error( "Synology ABB / getAgentVersion - Error Code (515): Hook file is empty!");
+				}
+				else
 				{
 					$app_info = @json_decode($linesfilehook, true);
-					if (! empty($app_info['version']))
+					if ($app_info['error_code'] == 0)
 					{
-						$return = $app_info['version'];
-					}	
+						if (! empty($app_info['version']))
+						{
+							$return = $app_info['version'];
+						}
+					}
 				}
 			}
+			else
+			{
+				$this->logger->error( "Synology ABB / getAgentVersion - Error Code (510): The file that returns the hook information does not exist!");
+			}
+		}
+		else
+		{
+			$this->logger->info( "Synology ABB / getAgentVersion - Info Code (1000): Agent installation not detected.") ;
 		}
 		return $return;
 	}

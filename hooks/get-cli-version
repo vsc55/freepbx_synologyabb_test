@@ -4,20 +4,6 @@
     error_reporting(E_ALL);
     $syno = \FreePBX::Synologyactivebackupforbusiness();
 
-
-    // Make sure we have a param
-    // if (empty($argv[1])) {
-    //     throw new \Exception("Needs a param");
-    // }
-
-    // Underp the base64 that the param is using.
-    // $b = str_replace('_', '/', $argv[1]);
-    // $settings = @json_decode(gzuncompress(@base64_decode($b)), true);
-
-    // if (!is_array($settings)) {
-    //     throw new \Exception("Invalid param");
-    // }
-
     $data_return = array(
         'error_code' => -1,
         'error_msg' => ""
@@ -34,7 +20,7 @@
     }
     else
     {
-        $cmd = $syno->get_abbclipath() . " -v";
+        $cmd = $syno->get_abbclipath() . " -v 2>&1";
         exec($cmd, $out, $ret);
 
         if($ret === 0 && is_array($out) && count($out) == 1)
@@ -50,18 +36,17 @@
             $data_return['error_code'] = 502;
             $data_return['error_msg'] = _("Synology Agent not return info!");
         }
-
-        file_put_contents($file, json_encode($data_return));
-        chown($file, 'asterisk');
     }
 
-    // print_r($data_return);
-    // echo "\n";
+    file_put_contents($file, json_encode($data_return));
+    chown($file, 'asterisk');
 
     if ($data_return['error_code'] != 0)
     {
-        dbug("Error Code (" .$data_return['error_code']. ")!! " . $data_return['error_msg']);
+        $syno->logger->error( sprintf("Synology ABB / hook / get-cli-version - Error Code (%s): %s", $data_return['error_code'], $data_return['error_msg']) ) ;
     }
+
+    // dbug($data_return);
 
     exit();
 ?>
