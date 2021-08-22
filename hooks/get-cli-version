@@ -4,47 +4,59 @@
     error_reporting(E_ALL);
     $syno = \FreePBX::Synologyactivebackupforbusiness();
 
+    $error_code = -1;
     $data_return = array(
-        'error_code' => -1,
-        'error_msg' => ""
+        'error' => array(),
+        'exec'  => array(),
+        'app'   => array(),
     );
 
-    $file = $syno->get_hook_file("version");
+    $file = $syno->getHookFilename("version");
     if (file_exists($file)) { unlink($file); }
     
-
     if (! $syno->isAgentInstalled())
     {
-        $data_return['error_code'] = 501;
-        $data_return['error_msg'] = _("Synology Agent not Installed!");
+        $error_code = 501;
     }
     else
     {
-        $cmd = $syno->get_abbclipath() . " -v 2>&1";
+        $cmd = $syno->getABBCliPath() . " -v 2>&1";
         exec($cmd, $out, $ret);
 
-        if($ret === 0 && is_array($out) && count($out) == 1)
+        $data_return['exec'] = array('cmd' => $cmd, 'ret' => $ret, 'out' => $out);
+
+        if (! is_array($out))
         {
-            $version = explode(":", $out[0]);
-            $version = array_map('trim', $version);
-            $data_return['app']     = $version[0];
-            $data_return['version'] = $version[1];
-            $data_return['error_code'] = 0;
+            $error_code = 502;
+        }
+        elseif($ret !== 0)
+        {
+            $error_code = 503;
+        }
+        elseif(count($out) != 1)
+        {
+            $error_code = 504;
         }
         else
         {
-            $data_return['error_code'] = 502;
-            $data_return['error_msg'] = _("Synology Agent not return info!");
+            $version = explode(":", $out[0]);
+            $version = array_map('trim', $version);
+            $data_return['app'] = array(
+                'name' => $version[0],
+                'version' => $version[1],
+            );
+            $error_code = 0;
         }
     }
 
-    file_put_contents($file, json_encode($data_return));
-    chown($file, 'asterisk');
+    $data_return['error'] = $syno->getErrorMsgByErrorCode($error_code, true);
 
-    if ($data_return['error_code'] != 0)
+    if ($error_code !== 0)
     {
-        $syno->logger->error( sprintf("Synology ABB / hook / get-cli-version - Error Code (%s): %s", $data_return['error_code'], $data_return['error_msg']) ) ;
+        $syno->logger->error( sprintf("Synology ABB / hook / get-cli-version - Code (%s): %s", $error_code, $data_return['error']['msg']) ) ;
     }
+
+    $syno->writeFileHook($file, $data_return);
 
     // dbug($data_return);
 

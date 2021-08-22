@@ -106,7 +106,7 @@
 
 
     $data_return = $syno->getAgentStatusDefault();
-    $file = $syno->get_hook_file("status");
+    $file = $syno->getHookFilename("status");
     if (file_exists($file)) { unlink($file); }
 
 
@@ -117,7 +117,7 @@
     }
     else
     {
-        $cmd = $syno->get_abbclipath() . " -s 2>&1";
+        $cmd = $syno->getABBCliPath() . " -s 2>&1";
         exec($cmd, $out, $ret);
         $data_return['exec_ret'] = $ret;
 
