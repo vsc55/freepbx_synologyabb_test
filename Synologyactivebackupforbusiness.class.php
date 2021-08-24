@@ -17,9 +17,8 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
         'nextbackup' => '',
         'server_status' => '',
         'portal' => '',
-		'error_code' => -1,
-		'error_msg' => '',
-		'exec_ret' => -1,
+		'error' => array(),
+		'exec' => array(),
     );
 
 	const STATUS_COMPLETED 		= 100;		//1 Completed 		(Idle - Completed)
@@ -46,6 +45,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		$this->asttmpdir 	= $this->getAstSpoolDir() . "/tmp";
 
 		$this->ABBCliVersionMin = "2.2.0-2070";
+		$this->ABBCliVersionInstalled = $this->getAgentVersion(true, false);
 	}
 
 	public function chownFreepbx() {
@@ -273,19 +273,24 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 
 	public function ajaxHandler() {
 		$command = $this->getReq("command", "");
+		$data_return = false;
 		switch ($command)
 		{
 			case 'getagentversion':
-				return array("status" => true, "data" => $this->getAgentVersion());
+				$data_return = array("status" => true, "data" => $this->ABBCliVersionInstalled);
 				break;
 
 			case 'getagentstatus':
-					return array("status" => true, "data" => $this->getAgentStatus());
-					break;
+				$status_info = $this->getAgentStatus();
+				$status_info['agent_version'] = $this->ABBCliVersionInstalled;
+
+				$data_return = array("status" => true, "data" => $status_info);
+				break;
 
 			default:
-				return array("status" => false, "message" => _("Command not found!"), "command" => $command);
+				$data_return = array("status" => false, "message" => _("Command not found!"), "command" => $command);
 		}
+		return $data_return;
 	}
 	
 
@@ -295,7 +300,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 
 	public function isAgentVersionOk() {
 		$version_minimal = $this->ABBCliVersionMin;
-		$version_installed = $this->getAgentVersion();
+		$version_installed = $this->$this->ABBCliVersionInstalled['full'];
 		return version_compare($version_minimal, $version_installed, '<=');
 	}
 
@@ -304,119 +309,143 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 	}
 
 
-	public function getAgentStatus() {
-		//1 Completed
-		//2 Cancel
-		//3 Backup en curso
-		//4 No conectado
-		//99990 - status desconocido
-		//99991 - status Idel desconocido
-
+	public function getAgentStatus($return_error = true) {
 
 		$return = $this->getAgentStatusDefault();
+		$error_code = -1;
+
+		$t_html_skip = false;
+		$t_html = array('force' => false, 'body' => '');
 
 		$file = $this->getHookFilename("status");
 		$this->runHook("get-cli-status");
-		if(file_exists($file))
+		if(! file_exists($file))
+		{
+			$error_code = 510;
+		}
+		else
 		{
 			$linesfilehook = file_get_contents($file);
 			// unlink($file);
 
-			if (empty($linesfilehook))
+			if (trim($linesfilehook) == false)
 			{
-				$return['error_code'] = 511;
-				$return['error_msg'] = _("Hook file is emtry!");
+				$error_code = 515;
 			}
 			else
 			{
-				$return = @json_decode($linesfilehook, true);
-				$return['lastbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $return['lastbackup']);
-				$return['nextbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $return['nextbackup']);
+				$hook_info = @json_decode($linesfilehook, true);
 
-				$return['html']['body'] = "";
-				$return['html']['force'] = false;
-
-				$t_status_info = preg_split('/[-]+/', $return['server_status']);
-				$t_status_info = array_map('trim', $t_status_info);	//Trim All Elements Array
-				
-				switch (strtolower($t_status_info[0]))
+				if ($hook_info['error']['code'] != 0)
 				{
-					case strtolower("Idle"):
-						switch (strtolower($t_status_info[1]))
-						{
-							case strtolower("Completed"):
-								// Idle - Completed
-								$return['info_status'] = array ('status_code' => 1, 'status' => _("Completed"));
-								break;
+					$error_code = $hook_info['error'];
+				}
+				else
+				{
+					$status_code = -1;
+					$t_info = array();
 
-							case strtolower("Canceled"):
-								//Idle - Canceled
-								$return['info_status'] = array ('status_code' => 2, 'status' => _("Canceled"));
-								break;
+					$hook_info['lastbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $hook_info['lastbackup']);
+					$hook_info['nextbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $hook_info['nextbackup']);
 
-							default:
-								$return['info_status'] = array ('status_code' => 99991, 'status' => _("Status Unknown"));
-						}
-						break;
+					$t_status_info = preg_split('/[-]+/', $hook_info['server_status']);
+					$t_status_info = array_map('trim', $t_status_info);	//Trim All Elements Array
+					switch (strtolower($t_status_info[0]))
+					{
+						case strtolower("Idle"):
+							switch (strtolower($t_status_info[1]))
+							{
+								case strtolower("Completed"):	// Idle - Completed
+									$status_code = self::STATUS_COMPLETED;
+									break;
 
-					case strtolower("Backing up..."):
-						// Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
+								case strtolower("Canceled"):	// Idle - Canceled
+									$status_code =  self::STATUS_CANCEL;
+									break;
 
-						$t_status_info['progress'] = preg_split('/[\(\)]+/', $t_status_info[1]);
-						$t_status_info['progress'] = array_map('trim', $t_status_info['progress']);
+								default:
+									$status_code =  self::STATUS_UNKNOWN_IDEL;
+							}
+							$t_html['skip'] = true;
+							break;
 
-						$t_status_info['progressdata'] = preg_split('/[\/]+/', $t_status_info['progress'][0]);
-						$t_status_info['progressdata'] = array_map('trim', $t_status_info['progressdata']);
-						
-						$return['info_status'] = array(
-							'status'		=> _("BackingUp"),
-							'status_code'	=> 3,
-							'progress'		=> array(
+						case strtolower("Backing up..."):		// Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
+							$status_code =  self::STATUS_BACKUP_RUN;
+
+							$t_status_info['progress'] = preg_split('/[\(\)]+/', $t_status_info[1]);
+							$t_status_info['progress'] = array_map('trim', $t_status_info['progress']);
+
+							$t_status_info['progressdata'] = preg_split('/[\/]+/', $t_status_info['progress'][0]);
+							$t_status_info['progressdata'] = array_map('trim', $t_status_info['progressdata']);
+							
+							
+							$t_info['progress'] = array(
 								'all' 	=> $t_status_info[1],
 								'send' 	=> \ByteUnits\parse($t_status_info['progressdata'][0])->numberOfBytes(),
 								'total' => \ByteUnits\parse($t_status_info['progressdata'][1])->numberOfBytes(),
 								'speed' => $t_status_info['progress'][1],
-							)
-						);
-						break;
+							);
+							break;
 
-					case strtolower("No connection found"):
-						$return['info_status'] = array ('status_code' => 4, 'status' => _("NoConnection"));
-						$return['html']['body'] = $this->showPage("main.body.login");
-						//TODO: Debug!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-						$return['html']['force'] = true;
-						break;
+						case strtolower("No connection found"):	// No connection found
+							$status_code =  self::STATUS_NO_CONNECTION;
+							$t_html = array(
+								'force' => false,
+								'body' => $this->showPage("main.body.login"),
+							);
+							break;
 
-					default:
-						$return['info_status'] = array ('status_code' => 99990, 'status' => _("Status Unknown"));
+						default:
+							$status_code = self::STATUS_UNKNOWN;
+					}
+
+					if (! is_array($status_code))
+					{
+						$status_code = $this->getStatusMsgByCode($status_code, true);
+					}
+					$hook_info['info_status'] = array_merge($status_code, $t_info);
+
+					if ($status_code['code'] >= self::STATUS_UNKNOWN )
+					{
+						$this->logger->warning( sprintf("%s->%s - Code (%s): Status not controlled [%s]!", $this->module_name, __FUNCTION__, $status_code['code'], $hook_info['server_status']));
+					}
+
+					$return = $hook_info;
+					$error_code = 0;
 				}
-
-				if ($return['info_status']['status_code'] >= 99990 )
-				{
-					$this->logger->warning( sprintf("Synology ABB / getAgentStatus - Warning Code (%s): Status not controlled [%s]", $return['info_status']['status_code'], $return['server_status']) );
-				}
-
-				$return['error_code'] = 0;
 			}
 		}
-		else
+
+		if (! is_array($error_code))
 		{
-			$return['error_code'] = 510;
-			$return['error_msg'] = _("The file that returns the hook information does not exist!");
+			$error_code = $this->getErrorMsgByErrorCode($error_code, true);
+		}
+		if ($return_error) 
+		{ 
+			$return['error'] = $error_code; 
 		}
 
-		if ($return['error_code'] != 0)
+		if ($error_code['code'] != 0) 
 		{
-			$this->logger->error( sprintf("Synology ABB / getAgentStatus - Error Code (%s): %s", $return['error_code'], $return['error_msg']) ) ;
+			$this->logger->error( sprintf("%s->%s - Code (%s): %s", $this->module_name, __FUNCTION__, $error_code['code'], $error_code['msg']));
+
+			$t_html_skip = false;
+			$t_html = array(
+				'force' => false,
+				'body' => $this->showPage("main.body.error", array( 'error_code' => $error_code )),
+			);
 		}
-		
-		$return['agent_version'] = $this->getAgentVersion();
+
+		if (! $t_html_skip)
+		{
+			$return['html'] = $t_html;
+		}
 
 		return $return;
 	}
 
 
-	public function getAgentVersion($return_array = false) {
+	public function getAgentVersion($return_array = false, $return_error = true) {
 		$return = "";
 		$error_code = -1;
 		
@@ -474,9 +503,44 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		{
 			$this->logger->error( sprintf("%s->%s - Code (%s): %s", $this->module_name, __FUNCTION__, $error_code['code'], $error_code['msg']));
 		}
+		if ($return_array && $return_error)
+		{
+			$return['error'] = $error_code;
+		}
 		return $return;
 	}
 
+	public function getStatusMsgByCode($status_code, $return_array = false) {
+		$msg = "";
+		switch($status_code)
+		{
+			case self::STATUS_BACKUP_RUN:
+				$msg = "BackingUp";
+				break;
+
+			case self::STATUS_CANCEL:
+				$msg = _("Canceled");
+				break;
+
+			case self::STATUS_COMPLETED:
+				$msg = _("Completed");
+				break;
+
+			case self::STATUS_NO_CONNECTION:
+				$msg = _("No Connection");
+				break;
+
+			case self::STATUS_UNKNOWN:
+			case self::STATUS_UNKNOWN_IDEL:
+				$msg = _("Status Unknown");
+				break;
+
+			default:
+				$msg = sprintf(_("The status code (%s) is not controlled!"), $status_code);
+		}
+
+		return ($return_array ? array( 'code' => $status_code, 'msg' => $msg ) : $msg);
+	}
 
 	public function getErrorMsgByErrorCode($error_code, $return_array = false) {
 		$msg = "";

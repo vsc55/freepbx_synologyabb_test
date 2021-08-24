@@ -1,6 +1,6 @@
 var timerRefresInfo;
 var timerRefresInterval;
-var lastStatusCode;
+var lastCheckCode;
 
 $(document).ready(function()
 {
@@ -19,6 +19,7 @@ $(document).ready(function()
 
 function box_resize()
 {
+	return;
 	var box_area = $("#synologyabb-panel");
 	var new_size = ($(window).height() - $('#footer').height() - $('div.panel-heading', box_area).outerHeight(true) - $('div.panel-footer', box_area).outerHeight(true)  - $('div.panel-body', box_area).offset().top);
 	$('div.panel-body', box_area).css({
@@ -53,77 +54,55 @@ function loadStatus(e)
 			}
 
             var status = data.data;
+			
 			// console.log(data.data);
 
 			var box_area = $("#synologyabb-panel");
-			if (status.error_code != 0)
+			var error_code = status.error.code;
+			var status_code = undefined;
+
+			if ( 'info_status' in status && 'code' in  status.info_status )
 			{
-				$('div.panel-body', box_area).hide();
-				$('div.panel-footer', box_area).hide();
-
-				$('div.panel-body', box_area).html("");
-				$('div.panel-footer', box_area).html("");
-
-				$('div.panel', box_area).removeClass("panel-danger panel-success panel-warning").addClass( "panel-danger" );
-				$('div.panel-heading, div.panel-title', box_area).html("<b>Error: " + status.error_msg + "</b>");
-			
-				lastStatusCode = undefined;
+				status_code = status.info_status.code;
 			}
-			else
-			{
-				var status_code = status.info_status.status_code;
-				//1 Completed
-				//2 Cancel
-				//3 Backup en curso
-				//4 No conectado
-				//99990 - status desconocido
-				//99991 - status Idel desconocido
 
-				switch (status_code)
+			var check_code = error_code !== 0 || typeof status_code === undefined ? "E" + error_code : "S" + status_code;
+
+			if (lastCheckCode !== check_code || status.html.force == true)
+			{
+				$('div:first-child', box_area).hide("fast", function()
 				{
-					case 1:
-					case 2:
-					case 3:
-						$('div.panel', box_area).removeClass("panel-danger panel-success panel-warning").addClass( "panel-success" );
+					$(box_area).html(status.html.body);
+					$('div:first-child', box_area).show("fast");
+				});
+				
+				// if (error_code === 0)
+				// {
+				// 	// const STATUS_COMPLETED 		= 100;		//1 Completed 		(Idle - Completed)
+				// 	// const STATUS_CANCEL			= 150;		//2 Cancel 			(Idle - Canceled)
+				// 	// const STATUS_BACKUP_RUN		= 300;		//3 Backup en curso (Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s))
+				// 	// const STATUS_NO_CONNECTION 	= 400;		//4 No conectado 	(No connection found)
+				// 	// const STATUS_UNKNOWN 		= 99990;	//99990 - status desconocido
+				// 	// const STATUS_UNKNOWN_IDEL	= 99991;	//99991 - status Idel desconocido
 
-						$('div.panel-heading, div.panel-title', box_area).html("<b>Server:</b> " + status.server);
+				// 	switch (status_code)
+				// 	{
+				// 		case 100:
+				// 		case 150:
+				// 		case 300:
+				// 		case 400:
+				// 			break;
+				// 		default:
+				// 			break;
+				// 	}
 
-						$('div.panel-body', box_area).html("").show();
-						$('div.panel-footer', box_area).html("").show();
-						break;
+				// 	// $('div.panel-version', box_area).html("<b>Agent Version: " + status.agent_version.full + "</b>");
+				// }
 
-					case 4:
-						$('div.panel', box_area).removeClass("panel-danger panel-success panel-warning").addClass( "panel-warning" );
-						$('div.panel-heading, div.panel-title', box_area).html("<b>Warning Status: " + status.server_status + "</b>");
-
-						if (lastStatusCode != status_code || status.html.force == true)
-						{
-							$('div.panel-body', box_area).html(status.html.body);
-						}
-						$('div.panel-body', box_area).show();
-						
-						$('div.panel-footer', box_area).html("<b>Agent Version: " + status.agent_version + "</b>").show();
-						break;
-
-					default:
-						$('div.panel', box_area).removeClass("panel-danger panel-success panel-warning").addClass( "panel-warning" );
-						$('div.panel-heading, div.panel-title', box_area).html("<b>Warning Status: " + status.server_status + "</b>");
-						
-						$('div.panel-body', box_area).html("").hide();
-
-						$('div.panel-footer', box_area).html("<b>Agent Version: " + status.agent_version + "</b>").show();
-						break;
-				}
-				lastStatusCode = status_code;
-			}
 			
+			}
 
-            // $("#info_server").text(status.server);
-            // $("#info_user").text(status.user);
-            // $("#info_lastbackup").text(status.lastbackup);
-            // $("#info_nextbackup").text(status.nextbackup);
-            // $("#info_status").text(status.server_status);
-            // $("#info_portal").attr("href", status.portal);	
+			lastCheckCode = check_code;
 		}
 		box_resize();
         timerRefresInfo = setTimeout(loadStatus, timerRefresInterval);

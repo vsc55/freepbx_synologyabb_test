@@ -1,10 +1,5 @@
 #!/usr/bin/env php
 <?php
-    include_once '/etc/freepbx.conf';
-    error_reporting(E_ALL);
-    $syno = \FreePBX::Synologyactivebackupforbusiness();
-
-
     // ----------------- return run command---------------------
 
     // ------ Aun no se ha configurado la conexion con el servidor
@@ -105,40 +100,40 @@
     // ----------------- return ---------------------
 
 
+    include_once '/etc/freepbx.conf';
+    error_reporting(E_ALL);
+    $syno = \FreePBX::Synologyactivebackupforbusiness();
+
+    $error_code = -1;
     $data_return = $syno->getAgentStatusDefault();
+
     $file = $syno->getHookFilename("status");
     if (file_exists($file)) { unlink($file); }
 
-
     if (! $syno->isAgentInstalled())
     {
-        $data_return['error_code'] = 501;
-        $data_return['error_msg'] = _("Synology Agent not Installed!");
+        $error_code = 501;
     }
     else
     {
         $cmd = $syno->getABBCliPath() . " -s 2>&1";
         exec($cmd, $out, $ret);
-        $data_return['exec_ret'] = $ret;
 
-        if (! in_array($ret, array(0, 5), true))
+        $data_return['exec'] = array('cmd' => $cmd, 'ret' => $ret, 'out' => $out);
+
+        if (! is_array($out))
         {
-            $data_return['error_code'] = 503;
-            $data_return['error_msg'] = _("Synology Agent return code not controlled!");
+            $error_code = 502;
         }
-        elseif ( ! is_array($out) )
+        elseif (! in_array($ret, array(0, 5), true))
         {
-            $data_return['error_code'] = 502;
-            $data_return['error_msg'] = _("Synology Agent not return info!");
+            $error_code = 503;
         }
         else
         {
             foreach($out as $line)
             {
-                if (empty($line))
-                {
-                    continue;
-                }
+                if (empty($line)) { continue; }
                 
                 if ( $line == 'No connection found' )
                 {
@@ -180,20 +175,23 @@
                     $data_return['nextbackup'] = trim(explode("Next backup time:", $line, 2)[1]);
                 }
             }
-            $data_return['error_code'] = 0;
+
+            $error_code = 0;
         }
     }
 
-    file_put_contents($file, json_encode($data_return));
-    chown($file, 'asterisk');
+    $data_return['error'] = $syno->getErrorMsgByErrorCode($error_code, true);
 
-    if ($data_return['error_code'] != 0)
+    if ($error_code !== 0)
     {
-        $syno->logger->error( sprintf("Synology ABB / hook / get-cli-status - Error Code (%s): %s", $data_return['error_code'], $data_return['error_msg']) ) ;
+        $syno->logger->error( sprintf("Synology ABB / hook / get-cli-status - Code (%s): %s", $error_code, $data_return['error']['msg']) ) ;
     }
+
+    $syno->writeFileHook($file, $data_return);
 
     // dbug($data_return);
     // print_r($data_return);
     // echo "\n";
+
     exit();
 ?>
