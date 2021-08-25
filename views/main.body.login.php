@@ -25,6 +25,6 @@
       </form>
     </div>
     <div class="panel-footer panel-version">
-      <b><?php echo sprintf( _("Agent Version: %s"), $syno->ABBCliVersionInstalled['full']) ; ?></b>
+      <b><?php echo sprintf( _("Agent Version: %s"), $syno->getAgentVersion() ); ?></b>
     </div>
 </div>

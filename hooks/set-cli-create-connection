@@ -1,0 +1,138 @@
+#!/usr/bin/env php
+<?php
+
+// arg prueba: eJyrVipOLSpLLVKyUjK0NNIzNLPQM7QwAGElHaXSYrBEQWpBKpBXkFhcXJ5flAIRyYwpNTBIMyzJV6oFAJtjFFo=
+// Array
+// (
+//     [server] => 192.168.180.180
+//     [user] => pepe
+//     [password] => pepiñto
+// )
+
+
+// arg prueba: eJyrVipOLSpLLVKyUjK0NNIzNLPQM7QwAGElHaXSYrAEkFWQWFxcnl+UAuQVpBZkxpQaGKQZluQr1QIAQzsSsA==
+// Array
+// (
+//     [server] => 192.168.180.180
+//     [user] => pepe
+//     [password] => pepiñto
+// )
+
+    // Hack Hook: /usr/bin/sysadmin_manager
+
+
+   // Make sure we have a param
+    if (empty($argv[1])) {
+        throw new \Exception("Needs a param");
+    }
+
+    // Underp the base64 that the param is using.
+    $b = str_replace('_', '/', $argv[1]);
+    $settings = @json_decode(gzuncompress(@base64_decode($b)), true);
+
+    if (!is_array($settings)) {
+        throw new \Exception("Invalid param");
+    }
+
+
+    $setting_needs = array('hook_file' => true, 'server' => true, 'user' => true, 'password' => true);
+    foreach ($setting_needs as $key => $val)
+    {
+        if (! array_key_exists($key, $settings) )
+        {
+            throw new \Exception("Necessary adjustment is missing");
+        }
+        elseif ( $val == true && empty($settings[$key]) )
+        {
+            throw new \Exception("Param is empty");
+        }
+    }
+
+
+    include_once '/etc/freepbx.conf';
+    error_reporting(E_ALL);
+    $syno = \FreePBX::Synologyactivebackupforbusiness();
+
+    $error_code  = $syno::ERROR_NOT_DEFINED;
+    $data_return = array(
+        'error' => array(),
+        'exec'  => array(),
+        'app'   => array(),
+    );
+
+    $file = $syno->getHookFilename($settings['hook_file']);
+    if (file_exists($file)) { unlink($file); }
+    
+    if (! $syno->isAgentInstalled())
+    {
+        $error_code = $syno::ERROR_AGENT_NOT_INSTALLED;
+    }
+    else
+    {
+
+
+
+
+        $server = $settings['server'];
+        $user   = $settings['user'];
+        $pass   = $settings['password'];
+    
+        $check_server = $syno->checkServer($server);
+        if ($check_server !== true)
+        {
+            $error_code = $syno::ERROR_AGENT_SERVER_CHECK_ERROR;
+    
+        }
+        else
+        {
+    
+        }
+
+
+
+
+
+
+
+
+        // $cmd = $syno->getABBCliPath() . " -v 2>&1";
+        // exec($cmd, $out, $ret);
+
+        // $data_return['exec'] = array('cmd' => $cmd, 'ret' => $ret, 'out' => $out);
+
+        // if (! is_array($out))
+        // {
+        //     $error_code = $syno::ERROR_AGENT_NOT_RETURN_INFO;
+        // }
+        // elseif($ret !== 0)
+        // {
+        //     $error_code = $syno::ERROR_AGENT_ENDED_IN_ERROR;
+        // }
+        // elseif(count($out) != 1)
+        // {
+        //     $error_code = $syno::ERROR_AGENT_RETURN_UNCONTROLLED;
+        // }
+        // else
+        // {
+        //     $version = explode(":", $out[0], 2);
+        //     $version = array_map('trim', $version);
+        //     $data_return['app'] = array(
+        //         'name' => $version[0],
+        //         'version' => $version[1],
+        //     );
+        //     $error_code = $syno::ERROR_ALL_GOOD;
+        // }
+    }
+
+    $data_return['error'] = $syno->getErrorMsgByErrorCode($error_code, true);
+
+    if ($error_code !== $syno::ERROR_ALL_GOOD)
+    {
+        $syno->logger->error( sprintf("%s - Code (%s): %s", __FILE__, $error_code, $data_return['error']['msg']) ) ;
+    }
+
+    $syno->writeFileHook($file, $data_return);
+    
+    // dbug($data_return);
+    exit();
+?>

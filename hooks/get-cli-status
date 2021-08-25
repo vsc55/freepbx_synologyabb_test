@@ -100,19 +100,47 @@
     // ----------------- return ---------------------
 
 
+
+
+    // Make sure we have a param
+    if (empty($argv[1])) {
+        throw new \Exception("Needs a param");
+    }
+
+    // Underp the base64 that the param is using.
+    $b = str_replace('_', '/', $argv[1]);
+    $settings = @json_decode(gzuncompress(@base64_decode($b)), true);
+
+    if (!is_array($settings)) {
+        throw new \Exception("Invalid param");
+    }
+
+    $setting_needs = array('hook_file' => true);
+    foreach ($setting_needs as $key => $val)
+    {
+        if (! array_key_exists($key, $settings) )
+        {
+            throw new \Exception("Necessary adjustment is missing");
+        }
+        elseif ( $val == true && empty($settings[$key]) )
+        {
+            throw new \Exception("Param is empty");
+        }
+    }
+
     include_once '/etc/freepbx.conf';
     error_reporting(E_ALL);
     $syno = \FreePBX::Synologyactivebackupforbusiness();
 
-    $error_code = -1;
+    $error_code  = $syno::ERROR_NOT_DEFINED;
     $data_return = $syno->getAgentStatusDefault();
 
-    $file = $syno->getHookFilename("status");
+    $file = $syno->getHookFilename($settings['hook_file']);
     if (file_exists($file)) { unlink($file); }
 
     if (! $syno->isAgentInstalled())
     {
-        $error_code = 501;
+        $error_code = $syno::ERROR_AGENT_NOT_INSTALLED;
     }
     else
     {
@@ -123,11 +151,11 @@
 
         if (! is_array($out))
         {
-            $error_code = 502;
+            $error_code = $syno::ERROR_AGENT_NOT_RETURN_INFO;
         }
         elseif (! in_array($ret, array(0, 5), true))
         {
-            $error_code = 503;
+            $error_code = $syno::ERROR_AGENT_ENDED_IN_ERROR;
         }
         else
         {
@@ -176,22 +204,19 @@
                 }
             }
 
-            $error_code = 0;
+            $error_code = $syno::ERROR_ALL_GOOD;
         }
     }
 
     $data_return['error'] = $syno->getErrorMsgByErrorCode($error_code, true);
 
-    if ($error_code !== 0)
+    if ($error_code !== $syno::ERROR_ALL_GOOD)
     {
-        $syno->logger->error( sprintf("Synology ABB / hook / get-cli-status - Code (%s): %s", $error_code, $data_return['error']['msg']) ) ;
+        $syno->logger->error( sprintf("%s - Code (%s): %s", __FILE__, $error_code, $data_return['error']['msg']) ) ;
     }
 
     $syno->writeFileHook($file, $data_return);
 
     // dbug($data_return);
-    // print_r($data_return);
-    // echo "\n";
-
     exit();
 ?>
