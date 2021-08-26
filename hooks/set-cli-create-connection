@@ -1,25 +1,6 @@
 #!/usr/bin/env php
 <?php
-
-// arg prueba: eJyrVipOLSpLLVKyUjK0NNIzNLPQM7QwAGElHaXSYrBEQWpBKpBXkFhcXJ5flAIRyYwpNTBIMyzJV6oFAJtjFFo=
-// Array
-// (
-//     [server] => 192.168.180.180
-//     [user] => pepe
-//     [password] => pepiñto
-// )
-
-
-// arg prueba: eJyrVipOLSpLLVKyUjK0NNIzNLPQM7QwAGElHaXSYrAEkFWQWFxcnl+UAuQVpBZkxpQaGKQZluQr1QIAQzsSsA==
-// Array
-// (
-//     [server] => 192.168.180.180
-//     [user] => pepe
-//     [password] => pepiñto
-// )
-
     // Hack Hook: /usr/bin/sysadmin_manager
-
 
    // Make sure we have a param
     if (empty($argv[1])) {
@@ -34,13 +15,12 @@
         throw new \Exception("Invalid param");
     }
 
-
-    $setting_needs = array('hook_file' => true, 'server' => true, 'user' => true, 'password' => true);
+    $setting_needs = array('hook_token' => true, 'hook_file' => true, 'server' => true, 'username' => true, 'password' => true);
     foreach ($setting_needs as $key => $val)
     {
         if (! array_key_exists($key, $settings) )
         {
-            throw new \Exception("Necessary adjustment is missing");
+            throw new \Exception("Necessary adjustment is missing [" . $key . "]");
         }
         elseif ( $val == true && empty($settings[$key]) )
         {
@@ -48,20 +28,30 @@
         }
     }
 
-
     include_once '/etc/freepbx.conf';
     error_reporting(E_ALL);
     $syno = \FreePBX::Synologyactivebackupforbusiness();
+    
+    $error_code             = $syno::ERROR_NOT_DEFINED;
+    $error_msg_alternative  = null;
 
-    $error_code  = $syno::ERROR_NOT_DEFINED;
     $data_return = array(
         'error' => array(),
         'exec'  => array(),
-        'app'   => array(),
+        'data' => array(),
+        'hook'  => array(
+            'token' => $settings['hook_token'],
+            'file'  => $settings['hook_file'],
+            'status'=> 'RUN',
+        ),
     );
-
-    $file = $syno->getHookFilename($settings['hook_file']);
-    if (file_exists($file)) { unlink($file); }
+    
+    $file = $syno->getHookFilename($settings['hook_file'], $settings['hook_token']);
+    if (file_exists($file))
+    {
+		throw new \Exception("Hook is already running");
+    }
+    $syno->writeFileHook($file, $data_return);
     
     if (! $syno->isAgentInstalled())
     {
@@ -69,62 +59,82 @@
     }
     else
     {
-
-
-
-
-        $server = $settings['server'];
-        $user   = $settings['user'];
-        $pass   = $settings['password'];
-    
+        $server     = $settings['server'];
+        $username   = $settings['username'];
+        $password   = $settings['password'];
+        
         $check_server = $syno->checkServer($server);
+        $data_return['data']['check'] = $check_server;
         if ($check_server !== true)
         {
-            $error_code = $syno::ERROR_AGENT_SERVER_CHECK_ERROR;
-    
+            $error_code = $syno::ERROR_AGENT_SERVER_CHECK;
         }
         else
         {
-    
+            $cmd = sprintf("%s -c -q -a %s -u %s -p %s 2>&1", $syno->getABBCliPath(), $server, $username, $password);
+            exec($cmd, $out, $ret);
+            $data_return['exec'] = array('cmd' => $cmd, 'ret' => $ret, 'out' => $out);
+
+            if (! is_array($out))
+            {
+                $error_code = $syno::ERROR_AGENT_NOT_RETURN_INFO;
+            }
+            elseif($ret !== 0)
+            {
+                if ($ret === 3 && is_array($out) && in_array(strtolower("Authentication failed"), array_map('strtolower', $out)))
+                {
+                    $t_list_error = array(
+                        //MSG: This IP address has been blocked because it has reached the maximum number of failed login attempts allowed within a specific time period. Please contact the system administrator.
+                        $syno::ERROR_AGENT_SERVER_AUTH_FAILED_BAN_IP    => strtolower("IP address has been blocked"),
+                        
+                        //MSG: The username or password you entered is incorrect. Please make sure you enter the correct information and try again.
+                        $syno::ERROR_AGENT_SERVER_AUTH_FAILED_USER_PASS => strtolower("username or password you entered is incorrect"),
+                    );
+
+                    //set generic auth failed error
+                    $error_code = $syno::ERROR_AGENT_SERVER_AUTH_FAILED;
+                    $error_msg_alternative = $out[0];
+
+                    //We check if it is any of the errors that we have controlled
+                    foreach ($t_list_error as $key => $val)
+                    {
+                        if ( strpos(strtolower($out[0]), $val) !== false )
+                        {
+                            $error_code = $key;
+                            $error_msg_alternative = null;
+                            break;
+                        }
+                    }
+
+                    $syno->logger->warning( sprintf("%s - Authentication failed - Code (%s): %s", __FILE__ , $error_code, $out[0]));
+                }
+                elseif($ret === 6)
+                {
+                    //Already connected
+                    $error_code =$syno::ERROR_AGENT_ALREADY_CONNECTED;
+                }
+                else
+                {
+                    $error_code = $syno::ERROR_AGENT_ENDED_IN_ERROR;
+                }
+            }
+            else
+            {
+                if(count($out) == 0)
+                {
+                    $error_code = $syno::ERROR_ALL_GOOD;
+                    $data_return['data']['register'] = true;
+                }
+                else
+                {
+                    $error_code = $syno::ERROR_AGENT_RETURN_UNCONTROLLED;
+                }
+            }
         }
-
-
-
-
-
-
-
-
-        // $cmd = $syno->getABBCliPath() . " -v 2>&1";
-        // exec($cmd, $out, $ret);
-
-        // $data_return['exec'] = array('cmd' => $cmd, 'ret' => $ret, 'out' => $out);
-
-        // if (! is_array($out))
-        // {
-        //     $error_code = $syno::ERROR_AGENT_NOT_RETURN_INFO;
-        // }
-        // elseif($ret !== 0)
-        // {
-        //     $error_code = $syno::ERROR_AGENT_ENDED_IN_ERROR;
-        // }
-        // elseif(count($out) != 1)
-        // {
-        //     $error_code = $syno::ERROR_AGENT_RETURN_UNCONTROLLED;
-        // }
-        // else
-        // {
-        //     $version = explode(":", $out[0], 2);
-        //     $version = array_map('trim', $version);
-        //     $data_return['app'] = array(
-        //         'name' => $version[0],
-        //         'version' => $version[1],
-        //     );
-        //     $error_code = $syno::ERROR_ALL_GOOD;
-        // }
     }
 
-    $data_return['error'] = $syno->getErrorMsgByErrorCode($error_code, true);
+    $data_return['error'] = $syno->getErrorMsgByErrorCode($error_code, true, $error_msg_alternative);
+    $data_return['hook']['status'] = 'END';
 
     if ($error_code !== $syno::ERROR_ALL_GOOD)
     {
@@ -132,7 +142,8 @@
     }
 
     $syno->writeFileHook($file, $data_return);
-    
-    // dbug($data_return);
+
+    dbug($data_return);
+
     exit();
 ?>

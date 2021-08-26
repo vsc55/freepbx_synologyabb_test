@@ -17,28 +17,48 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
         'nextbackup' => '',
         'server_status' => '',
         'portal' => '',
-		'error' => array(),
-		'exec' => array(),
     );
 
-	const STATUS_NULL			= -1;
-	const STATUS_COMPLETED 		= 100;		//1 Completed 		(Idle - Completed)
-	const STATUS_CANCEL			= 150;		//2 Cancel 			(Idle - Canceled)
-	const STATUS_BACKUP_RUN		= 300;		//3 Backup en curso (Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s))
-	const STATUS_NO_CONNECTION 	= 400;		//4 No conectado 	(No connection found)
-	const STATUS_UNKNOWN 		= 99990;	//99990 - status desconocido
-	const STATUS_UNKNOWN_IDEL	= 99991;	//99991 - status Idel desconocido
+	const STATUS_NULL			= -1;		// No se ha definido ningun estado.
+	const STATUS_IDLE 			= 110;		// (Idle) No se ha echo ninguna copia aun.
+	const STATUS_IDLE_COMPLETED = 120;		// (Idle - Completed)
+	const STATUS_IDLE_CANCEL	= 130;		// (Idle - Canceled)
+	const STATUS_IDLE_FAILED	= 140;		// (Idel - Failed)
+	
+	const STATUS_BACKUP_RUN		= 300;		// (Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)) Backup en curso
+	const STATUS_NO_CONNECTION 	= 400;		// (No connection found) No conectado con el servidor
 
-	const ERROR_UNKNOWN = -2;
+	const STATUS_ERR_DEV_REMOVED = 510; 	// (Error  - The current device has been removed from the server. Please contact your administrator for further assistance.) Equipo eliminado del servidor.
+
+	const STATUS_UNKNOWN 		= 99990;	//99990 - status desconocido
+	const STATUS_IDLE_UNKNOWN	= 99991;	//99991 - status Idel desconocido
+	const STATUS_ERR_UNKNOWN	= 99992;	//99992 - status Error desconocido
+
+
+
+	const ERROR_UNKNOWN 	= -2;
 	const ERROR_NOT_DEFINED = -1;
-	const ERROR_ALL_GOOD = 0;
-	const ERROR_AGENT_NOT_INSTALLED = 501;
-	const ERROR_AGENT_NOT_RETURN_INFO = 502;
-	const ERROR_AGENT_ENDED_IN_ERROR = 503;
-	const ERROR_AGENT_RETURN_UNCONTROLLED = 504;
-	const ERROR_AGENT_SERVER_CHECK_ERROR = 505;
-	const ERROR_HOOK_FILE_NOT_EXIST = 510;
-	const ERROR_HOOK_FILE_EMTRY = 515;
+	const ERROR_ALL_GOOD 	= 0;
+
+	const ERROR_AGENT_NOT_INSTALLED 		= 501;
+	const ERROR_AGENT_NOT_RETURN_INFO 		= 502;
+	const ERROR_AGENT_ENDED_IN_ERROR 		= 503;
+	const ERROR_AGENT_RETURN_UNCONTROLLED 	= 504;
+
+	const ERROR_AGENT_ALREADY_CONNECTED = 520;	// (Already connected)
+
+	const ERROR_AGENT_SERVER_CHECK 		= 550;
+
+	const ERROR_AGENT_SERVER_AUTH_FAILED 			= 611;
+	const ERROR_AGENT_SERVER_AUTH_FAILED_USER_PASS 	= 612;
+	const ERROR_AGENT_SERVER_AUTH_FAILED_BAN_IP 	= 613;
+
+	const ERROR_MISSING_ARGS = 650;
+
+	const ERROR_HOOK_FILE_NOT_EXIST = 710;
+	const ERROR_HOOK_FILE_EMTRY 	= 715;
+	const ERROR_HOOK_FILE_TOEKN 	= 720;
+	const ERROR_HOOK_RUN_TIMEOUT	= 725;
 
 	const DEFAULT_PORT = 5510;	// Default port Active Backup for Business Server
 	
@@ -58,7 +78,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		$this->astspooldir 	= $this->config->get("ASTSPOOLDIR");
 		$this->asttmpdir 	= $this->getAstSpoolDir() . "/tmp";
 
-		$this->ABBCliVersionMin = "2.2.0-2070";
+		$this->ABBCliVersionMin = "2.2.0-2070"; // Minimum version supported
 	}
 
 	public function chownFreepbx() {
@@ -80,11 +100,15 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		return $this->config->get('SYNOLOGYABFBABBCLI');
 	}
 
-	public function getHookFilename($hookname) {
+	public function getHookFilename($hookname, $hooktoken) {
 		$return = $this->getAstTmpDir() . "/synology-cli";
 		if (! empty($hookname))
 		{
 			$return .= "-" . $hookname;
+		}
+		if (! empty($hooktoken))
+		{
+			$return .= "-" . $hooktoken;
 		}
 		$return .= ".hook";
 		return $return;
@@ -188,31 +212,66 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 	private function runHookCheck($hook_file, $hook_run, $hook_params = array(), $decode = true) {
 		$error_code = self::ERROR_NOT_DEFINED;
 		$hook_info 	= null;
-		$file 		= $this->getHookFilename($hook_file);
+		$hook_token = uniqid('hook');
+		$file 		= $this->getHookFilename($hook_file, $hook_token);
 
-		$hook_params['hook_file'] = $hook_file;
+		$hook_params['hook_file'] 	= $hook_file;
+		$hook_params['hook_token'] 	= $hook_token;
 
 		$this->runHook($hook_run, $hook_params);
-		if(! file_exists($file))
+
+		// We wait 30 seconds to see if the file with the data is created
+		$maxloops = 60;
+		$hookTimeOut = true;
+		while ($maxloops--)
 		{
-			$error_code = self::ERROR_HOOK_FILE_NOT_EXIST;
+			if (file_exists($file))
+			{
+				$decode_info = $this->readFileHook($file, true);
+
+				if ( !empty($decode_info) && isset($decode_info['hook']['token']) && $hook_token == $decode_info['hook']['token'] && $decode_info['hook']['status'] == "END")
+				{
+					$hookTimeOut = false;
+					break;
+				}
+			}
+			usleep(500000);
+		}
+		if ($hookTimeOut)
+		{
+			$error_code = self::ERROR_HOOK_RUN_TIMEOUT;
 		}
 		else
 		{
-			$linesfilehook = file_get_contents($file);
-			unlink($file);
-
-			if (trim($linesfilehook) == false)
+			if(! file_exists($file))
 			{
-				$error_code = self::ERROR_HOOK_FILE_EMTRY;
+				$error_code = self::ERROR_HOOK_FILE_NOT_EXIST;
 			}
 			else
 			{
-				$hook_info = @json_decode($linesfilehook, true);
-				$error_code = ($hook_info['error']['code'] === self::ERROR_ALL_GOOD ? self::ERROR_ALL_GOOD : $hook_info['error']['code']);
-				if (! $decode)
+				$linesfilehook = file_get_contents($file);
+				unlink($file);
+	
+				if (trim($linesfilehook) == false)
 				{
-					$hook_info = $linesfilehook;
+					$error_code = self::ERROR_HOOK_FILE_EMTRY;
+				}
+				else
+				{
+					$hook_info = @json_decode($linesfilehook, true);
+					if ($hook_token != $hook_info['hook']['token'])
+					{
+						$error_code = self::ERROR_HOOK_FILE_TOEKN;
+					}
+					else
+					{
+						// $error_code = self::ERROR_ALL_GOOD;
+						$error_code = ($hook_info['error']['code'] === self::ERROR_ALL_GOOD ? self::ERROR_ALL_GOOD : $hook_info['error']['code']);
+						if (! $decode)
+						{
+							$hook_info = $linesfilehook;
+						}
+					}
 				}
 			}
 		}
@@ -220,6 +279,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		return array(
 			'hook_file' => $hook_file,
 			'hook_run' 	=> $hook_run,
+			'hook_token'=> $hook_token,
 			'hook_data'	=> $hook_info,
 			'file' 		=> $file,
 			'decode'	=> $decode,
@@ -227,13 +287,26 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		);
 	}
 
-	public function writeFileHook($file, $data) {
+	public function writeFileHook($file, $data, $encode = true) {
 		if (trim($file) == false) {
 			return false;
 		}
-		file_put_contents($file, json_encode($data));
+		file_put_contents($file, ($encode == true ? json_encode($data) : $data));
 		chown($file, 'asterisk');
 		return true;
+	}
+
+	public function readFileHook($file, $decode = true) {
+		$return = "";
+		if (trim($file) != false)
+		{
+			$return = file_get_contents($file);
+			if ($decode == true)
+			{
+				$return = @json_decode($return, true);
+			}
+		}
+		return $return;
 	}
 
 	public function install() {
@@ -319,6 +392,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		{
 			case "getagentversion":
 			case "getagentstatus":
+			case "setagentcreateconnection":
 				return true;
 				break;
 
@@ -342,6 +416,18 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 				$status_info['agent_version'] = $this->getAgentVersion(true, false);
 
 				$data_return = array("status" => true, "data" => $status_info);
+				break;
+			case 'setagentcreateconnection':
+				$agent_server 	= $this->getReq("agent-server", "");
+				$agent_username = $this->getReq("agent-user", "");
+				$agent_password = $this->getReq("agent-password", "");
+
+				$return_status = $this->setAgentConnection($agent_server, $agent_username, $agent_password);
+
+
+
+
+				$data_return = array("status" => true, "data" => $return_status);
 				break;
 
 			default:
@@ -368,47 +454,87 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 
 	public function getAgentStatus($return_error = true) {
 		$hook 		= $this->runHookCheck("status", "get-cli-status");
+		$hook_data  = $hook['hook_data']['data'];
 		$error_code = $hook['error'];
 		$return 	= $this->getAgentStatusDefault();
 		$t_html 	= array('force' => false, 'body' => null);
 
 		if ($error_code === self::ERROR_ALL_GOOD)
 		{
-			$hook_data = $hook['hook_data'];
-
 			$status_code = self::STATUS_NULL;
 			$t_info = array();
-
-			//clean array info debug hook
-			unset($hook_data['exec']);
 
 			$hook_data['lastbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $hook_data['lastbackup']);
 			$hook_data['nextbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $hook_data['nextbackup']);
 
 			$t_status_info = preg_split('/[-]+/', $hook_data['server_status']);
 			$t_status_info = array_map('trim', $t_status_info);	//Trim All Elements Array
-			switch (strtolower($t_status_info[0]))
+
+			$t_status_info_type = trim($t_status_info[0], chr(194) . chr(160));
+			$t_status_info_msg 	= @$t_status_info[1];
+
+			switch (strtolower($t_status_info_type))
 			{
 				case strtolower("Idle"):
-					switch (strtolower($t_status_info[1]))
+					if ($t_status_info_msg == "")
 					{
-						case strtolower("Completed"):	// Idle - Completed
-							$status_code = self::STATUS_COMPLETED;
-							break;
-
-						case strtolower("Canceled"):	// Idle - Canceled
-							$status_code =  self::STATUS_CANCEL;
-							break;
-
-						default:
-							$status_code =  self::STATUS_UNKNOWN_IDEL;
+						//MSG: Idle
+						$status_code = self::STATUS_IDLE;	
 					}
+					else
+					{
+						//set generic unknown error
+						$status_code = self::STATUS_IDLE_UNKNOWN;
+
+						$t_list_idle = array(
+							//MSG: Idle - Completed
+							self::STATUS_IDLE_COMPLETED => strtolower("Completed"),
+	
+							//MSG: Idle - Canceled
+							self::STATUS_IDLE_CANCEL => strtolower("Canceled"),
+
+							//MSG: Idle - Failed
+							self::STATUS_IDLE_FAILED => strtolower("Failed"),
+						);
+
+						//We check if it is any of the errors that we have controlled
+						foreach ($t_list_idle as $key => $val)
+						{
+							if ( strpos(strtolower($t_status_info_msg), $val) !== false )
+							{
+								$status_code = $key;
+								break;
+							}
+						}
+						unset($t_list_idle);
+					}
+					break;
+
+				case strtolower("Error"):
+					$t_list_errors = array(
+                        //MSG: Error  - The current device has been removed from the server. Please contact your administrator for further assistance.
+                        self::STATUS_ERR_DEV_REMOVED => strtolower("The current device has been removed from the server"),
+                    );
+
+                    //set generic unknown error
+                    $status_code = self::STATUS_ERR_UNKNOWN;
+                    
+                    //We check if it is any of the errors that we have controlled
+                    foreach ($t_list_errors as $key => $val)
+                    {
+                        if ( strpos(strtolower($t_status_info_msg), $val) !== false )
+                        {
+                            $status_code = $key;
+                            break;
+                        }
+                    }
+					unset($t_list_errors);
 					break;
 
 				case strtolower("Backing up..."):		// Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
 					$status_code =  self::STATUS_BACKUP_RUN;
 
-					$t_status_info['progress'] = preg_split('/[\(\)]+/', $t_status_info[1]);
+					$t_status_info['progress'] = preg_split('/[\(\)]+/', $t_status_info_msg);
 					$t_status_info['progress'] = array_map('trim', $t_status_info['progress']);
 
 					$t_status_info['progressdata'] = preg_split('/[\/]+/', $t_status_info['progress'][0]);
@@ -416,7 +542,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 					
 					
 					$t_info['progress'] = array(
-						'all' 	=> $t_status_info[1],
+						'all' 	=> $t_status_info_msg,
 						'send' 	=> \ByteUnits\parse($t_status_info['progressdata'][0])->numberOfBytes(),
 						'total' => \ByteUnits\parse($t_status_info['progressdata'][1])->numberOfBytes(),
 						'speed' => $t_status_info['progress'][1],
@@ -468,12 +594,13 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 	public function getAgentVersion($return_array = false, $return_error = true) {
 		
 		$hook 		= $this->runHookCheck("version", "get-cli-version");
+		$hook_data  = $hook['hook_data']['data'];
 		$error_code = $hook['error'];
 		$return 	= "0.0.0-0";
 
 		if ($error_code === self::ERROR_ALL_GOOD)
 		{
-			$app_ver = $hook['hook_data']['app']['version'];
+			$app_ver = $hook_data['version'];
 			if (! empty($app_ver))
 			{
 				$return = $app_ver;
@@ -501,19 +628,32 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 
 
 	public function setAgentConnection($server, $user, $pass) {
+		$return 	 = array();
 		$hook_params = array(
-			"server" => $server,
-			"user" => $user,
-			"pass" => $pass,
+			"server" 	=> $server,
+			"username" 	=> $user,
+			"password" 	=> $pass,
 		);
-		$hook 		= $this->runHookCheck("create_connection", "set-cli-create-connection", $hook_params);
-		$error_code = $hook['error'];
-		$return 	= array();
+		$hook_params = array_map('trim', $hook_params);
 
-		if ($error_code === self::ERROR_ALL_GOOD)
+
+		if (empty($hook_params['server']) || empty($hook_params['username']) || empty($hook_params['password']))
 		{
-			$hook_info = $hook['hook_data'];
-			
+			$error_code = self::ERROR_MISSING_ARGS;
+		}
+		else
+		{
+			$hook 		= $this->runHookCheck("createconnection", "set-cli-create-connection", $hook_params);
+			$hook_data  = $hook['hook_data']['data'];
+			$error_code = $hook['error'];
+
+			//DEBUG!!!!!!
+			$return = $hook;
+
+			if ($error_code === self::ERROR_ALL_GOOD)
+			{
+				// $hook_info = $hook['hook_data'];
+			}
 		}
 
 		$return['error'] = $this->getErrorMsgByErrorCode($error_code, true);
@@ -530,20 +670,35 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 				$msg = "BackingUp";
 				break;
 
-			case self::STATUS_CANCEL:
+			case self::STATUS_IDLE_CANCEL:
 				$msg = _("Canceled");
 				break;
 
-			case self::STATUS_COMPLETED:
+			case self::STATUS_IDLE_COMPLETED:
 				$msg = _("Completed");
+				break;
+
+			case self::STATUS_IDLE:
+				$msg = _("Pending First Copy");
+				break;
+			
+			case self::STATUS_IDLE_FAILED:
+				$msg = _("Failed");
 				break;
 
 			case self::STATUS_NO_CONNECTION:
 				$msg = _("No Connection");
 				break;
 
+			case self::STATUS_ERR_DEV_REMOVED:
+				$msg = _("Device Removed From Server");
+				break;
+
+			
+
 			case self::STATUS_UNKNOWN:
-			case self::STATUS_UNKNOWN_IDEL:
+			case self::STATUS_IDLE_UNKNOWN:
+			case self::STATUS_ERR_UNKNOWN:
 				$msg = _("Status Unknown");
 				break;
 
@@ -554,7 +709,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		return ($return_array ? array( 'code' => $status_code, 'msg' => $msg ) : $msg);
 	}
 
-	public function getErrorMsgByErrorCode($error_code, $return_array = false) {
+	public function getErrorMsgByErrorCode($error_code, $return_array = false, $msg_alternative = null) {
 		$msg = "";
 		switch($error_code)
 		{
@@ -582,12 +737,45 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 				$msg = _("Synology Agent returned uncontrolled information!");
 				break;
 
-			case self::ERROR_HOOK_FILE_NOT_EXIST: //510
+			case self::ERROR_AGENT_SERVER_CHECK: //505
+				$msg = _("The server is not available!");
+				break;
+
+			case self::ERROR_AGENT_ALREADY_CONNECTED:
+				$msg = _("Seynolgoy Agnet Already connected!");
+				break;
+
+			case self::ERROR_AGENT_SERVER_AUTH_FAILED: //511
+				$msg = _("The server returned an authentication failed error!");
+				break;
+
+
+			case self::ERROR_AGENT_SERVER_AUTH_FAILED_USER_PASS: //512
+				$msg = _("The username or password you entered is incorrect!");
+				break;
+
+			case self::ERROR_AGENT_SERVER_AUTH_FAILED_BAN_IP: //513
+				$msg = _("This IP address has been blocked because it has reached the maximum number of failed login attempts allowed within a specific time period!");
+				break;
+
+			case self::ERROR_HOOK_FILE_NOT_EXIST: //610
 				$msg = _("The file that returns the hook information does not exist!");
 				break;
 
-			case self::ERROR_HOOK_FILE_EMTRY: //515
+			case self::ERROR_HOOK_FILE_EMTRY: //615
 				$msg = _("Hook file is empty!");
+				break;
+
+			case self::ERROR_HOOK_FILE_TOEKN: //620
+				$msg = _("Hook token is invalid!");
+				break;
+			
+			case self::ERROR_HOOK_RUN_TIMEOUT:
+				$msg = _("Hook run exccesd tiemout!");
+				break;
+
+			case self::ERROR_MISSING_ARGS:
+				$msg = _("Missing Arguments!");
 				break;
 
 			case self::ERROR_UNKNOWN: //-2
@@ -596,6 +784,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 				$error_code = self::ERROR_UNKNOWN;
 				break;
 		}
+		if (! is_null($msg_alternative)) { $msg = $msg_alternative; }
 
 		return ($return_array ? array( 'code' => $error_code, 'msg' => $msg ) : $msg);
 	}
@@ -603,7 +792,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 	
 
 	public function checkServer($host, $port = null, $wait = 1) {
-		if ( is_null($port) ) { $prot = self::DEFAULT_PORT; }
+		if ( is_null($port) ) { $port = self::DEFAULT_PORT; }
     	$fp = @fsockopen($host, $port, $errCode, $errStr, $wait);
 		if ($fp)
 		{
@@ -612,7 +801,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		}
 		else
 		{
-			// echo "ERROR: $errCode - $errStr";
+			// echo "------ERROR: $errCode - $errStr";
 			$return_date = array('code' => $errCode, 'msg' => $errStr);
 		}
 		return $return_date;

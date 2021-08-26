@@ -13,7 +13,7 @@
         throw new \Exception("Invalid param");
     }
 
-    $setting_needs = array('hook_file' => true);
+    $setting_needs = array('hook_token' => true, 'hook_file' => true);
     foreach ($setting_needs as $key => $val)
     {
         if (! array_key_exists($key, $settings) )
@@ -34,11 +34,20 @@
     $data_return = array(
         'error' => array(),
         'exec'  => array(),
-        'app'   => array(),
+        'data'  => array(),
+        'hook'  => array(
+            'token' => $settings['hook_token'],
+            'file'  => $settings['hook_file'],
+            'status'=> 'RUN',
+        ),
     );
 
-    $file = $syno->getHookFilename($settings['hook_file']);
-    if (file_exists($file)) { unlink($file); }
+    $file = $syno->getHookFilename($settings['hook_file'], $settings['hook_token']);
+    if (file_exists($file))
+    {
+		throw new \Exception("Hook is already running");
+    }
+    $syno->writeFileHook($file, $data_return);
     
     if (! $syno->isAgentInstalled())
     {
@@ -67,7 +76,7 @@
         {
             $version = explode(":", $out[0], 2);
             $version = array_map('trim', $version);
-            $data_return['app'] = array(
+            $data_return['data'] = array(
                 'name' => $version[0],
                 'version' => $version[1],
             );
@@ -76,6 +85,7 @@
     }
 
     $data_return['error'] = $syno->getErrorMsgByErrorCode($error_code, true);
+    $data_return['hook']['status'] = 'END';
 
     if ($error_code !== $syno::ERROR_ALL_GOOD)
     {
@@ -85,5 +95,6 @@
     $syno->writeFileHook($file, $data_return);
     
     // dbug($data_return);
+
     exit();
 ?>
