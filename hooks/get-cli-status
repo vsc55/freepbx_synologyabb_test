@@ -100,33 +100,10 @@
     // ----------------- return ---------------------
 
 
+    include __DIR__."/hook.parse.args.php";
+    $v = new \FreePBX\modules\Synologyactivebackupforbusiness\ParseArgs($argv, __FILE__);
+    $settings = $v->getSettingAll();
 
-
-    // Make sure we have a param
-    if (empty($argv[1])) {
-        throw new \Exception("Needs a param");
-    }
-
-    // Underp the base64 that the param is using.
-    $b = str_replace('_', '/', $argv[1]);
-    $settings = @json_decode(gzuncompress(@base64_decode($b)), true);
-
-    if (!is_array($settings)) {
-        throw new \Exception("Invalid param");
-    }
-
-    $setting_needs = array('hook_token' => true, 'hook_file' => true);
-    foreach ($setting_needs as $key => $val)
-    {
-        if (! array_key_exists($key, $settings) )
-        {
-            throw new \Exception("Necessary adjustment is missing");
-        }
-        elseif ( $val == true && empty($settings[$key]) )
-        {
-            throw new \Exception("Param is empty");
-        }
-    }
 
     include_once '/etc/freepbx.conf';
     error_reporting(E_ALL);
@@ -147,7 +124,9 @@
     $file = $syno->getHookFilename($settings['hook_file'], $settings['hook_token']);
     if (file_exists($file))
     {
-		throw new \Exception("Hook is already running");
+		$msg_err = "Hook is already running, process aborting.";
+        $v->sendSyslog($msg_err);
+        throw new \Exception($msg_err);
     }
     $syno->writeFileHook($file, $data_return);
 

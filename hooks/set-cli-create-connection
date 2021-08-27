@@ -2,31 +2,10 @@
 <?php
     // Hack Hook: /usr/bin/sysadmin_manager
 
-   // Make sure we have a param
-    if (empty($argv[1])) {
-        throw new \Exception("Needs a param");
-    }
+    include __DIR__."/hook.parse.args.php";
+    $v = new \FreePBX\modules\Synologyactivebackupforbusiness\ParseArgs($argv, __FILE__);
+    $settings = $v->getSettingAll();
 
-    // Underp the base64 that the param is using.
-    $b = str_replace('_', '/', $argv[1]);
-    $settings = @json_decode(gzuncompress(@base64_decode($b)), true);
-
-    if (!is_array($settings)) {
-        throw new \Exception("Invalid param");
-    }
-
-    $setting_needs = array('hook_token' => true, 'hook_file' => true, 'server' => true, 'username' => true, 'password' => true);
-    foreach ($setting_needs as $key => $val)
-    {
-        if (! array_key_exists($key, $settings) )
-        {
-            throw new \Exception("Necessary adjustment is missing [" . $key . "]");
-        }
-        elseif ( $val == true && empty($settings[$key]) )
-        {
-            throw new \Exception("Param is empty");
-        }
-    }
 
     include_once '/etc/freepbx.conf';
     error_reporting(E_ALL);
@@ -49,13 +28,22 @@
     $file = $syno->getHookFilename($settings['hook_file'], $settings['hook_token']);
     if (file_exists($file))
     {
-		throw new \Exception("Hook is already running");
+        $msg_err = "Hook is already running, process aborting.";
+        $v->sendSyslog($msg_err);
+        throw new \Exception($msg_err);
     }
     $syno->writeFileHook($file, $data_return);
     
+    $setting_needs = array('server' => true, 'username' => true, 'password' => true);
+    $check_settings = $v->checkSettings($setting_needs, false);
+
     if (! $syno->isAgentInstalled())
     {
         $error_code = $syno::ERROR_AGENT_NOT_INSTALLED;
+    }
+    elseif ($check_settings !== true) 
+    {
+        $error_code = $syno::ERROR_MISSING_ARGS;
     }
     else
     {
@@ -81,14 +69,18 @@
             }
             elseif($ret !== 0)
             {
-                if ($ret === 3 && is_array($out) && in_array(strtolower("Authentication failed"), array_map('strtolower', $out)))
+                $outfix = (is_array($out) ? $out : array());
+                $outfix = array_map('strtolower', $outfix);
+                $outfix = array_map('trim', $outfix);
+
+                if ($ret === 3 && in_array(strtolower("Authentication failed"), $outfix))
                 {
                     $t_list_error = array(
                         //MSG: This IP address has been blocked because it has reached the maximum number of failed login attempts allowed within a specific time period. Please contact the system administrator.
-                        $syno::ERROR_AGENT_SERVER_AUTH_FAILED_BAN_IP    => strtolower("IP address has been blocked"),
+                        $syno::ERROR_AGENT_SERVER_AUTH_FAILED_BAN_IP    => "IP address has been blocked",
                         
                         //MSG: The username or password you entered is incorrect. Please make sure you enter the correct information and try again.
-                        $syno::ERROR_AGENT_SERVER_AUTH_FAILED_USER_PASS => strtolower("username or password you entered is incorrect"),
+                        $syno::ERROR_AGENT_SERVER_AUTH_FAILED_USER_PASS => "username or password you entered is incorrect",
                     );
 
                     //set generic auth failed error
@@ -98,7 +90,7 @@
                     //We check if it is any of the errors that we have controlled
                     foreach ($t_list_error as $key => $val)
                     {
-                        if ( strpos(strtolower($out[0]), $val) !== false )
+                        if ( strpos($outfix[0], strtolower($val)) !== false )
                         {
                             $error_code = $key;
                             $error_msg_alternative = null;
@@ -108,9 +100,8 @@
 
                     $syno->logger->warning( sprintf("%s - Authentication failed - Code (%s): %s", __FILE__ , $error_code, $out[0]));
                 }
-                elseif($ret === 6)
+                elseif ($ret === 6 && in_array(strtolower("Already connected"), $outfix))
                 {
-                    //Already connected
                     $error_code =$syno::ERROR_AGENT_ALREADY_CONNECTED;
                 }
                 else
@@ -123,7 +114,6 @@
                 if(count($out) == 0)
                 {
                     $error_code = $syno::ERROR_ALL_GOOD;
-                    $data_return['data']['register'] = true;
                 }
                 else
                 {
@@ -132,6 +122,8 @@
             }
         }
     }
+    $data_return['data']['register'] = ($error_code === $syno::ERROR_ALL_GOOD ? true : false);
+
 
     $data_return['error'] = $syno->getErrorMsgByErrorCode($error_code, true, $error_msg_alternative);
     $data_return['hook']['status'] = 'END';
