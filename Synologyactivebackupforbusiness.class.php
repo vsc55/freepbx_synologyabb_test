@@ -317,7 +317,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		$set['readonly'] = 0;
 		$set['hidden'] = 0;
 		$set['level'] = 0;
-		// $set['module'] = 'synologyactivebackupforbusiness';  //disabled as it generates error, Fix FREEPBX-22756
+		$set['module'] = $this->module_name; //'synologyactivebackupforbusiness';  //disabled as it generates error, Fix FREEPBX-22756
 		$set['category'] = 'Synology Active Backup for Business';
 		$set['emptyok'] = 1;
 		$set['name'] = 'Path for abb-cli';
@@ -636,13 +636,12 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		);
 		$hook_params = array_map('trim', $hook_params);
 
-
-		if (empty($hook_params['server']) || empty($hook_params['username']) || empty($hook_params['password']))
-		{
-			$error_code = self::ERROR_MISSING_ARGS;
-		}
-		else
-		{
+		// if (empty($hook_params['server']) || empty($hook_params['username']) || empty($hook_params['password']))
+		// {
+		// 	$error_code = self::ERROR_MISSING_ARGS;
+		// }
+		// else
+		// {
 			$hook 		= $this->runHookCheck("createconnection", "set-cli-create-connection", $hook_params);
 			$hook_data  = $hook['hook_data']['data'];
 			$error_code = $hook['error'];
@@ -654,7 +653,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 			{
 				// $hook_info = $hook['hook_data'];
 			}
-		}
+		// }
 
 		$return['error'] = $this->getErrorMsgByErrorCode($error_code, true);
 		return $return;
@@ -801,7 +800,6 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		}
 		else
 		{
-			// echo "------ERROR: $errCode - $errStr";
 			$return_date = array('code' => $errCode, 'msg' => $errStr);
 		}
 		return $return_date;

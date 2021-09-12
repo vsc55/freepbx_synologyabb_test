@@ -7,6 +7,9 @@
   <publisher>Javier Pastor Garcia aka VSC55</publisher>
   <description>Interface to configure and monitor backup status with synology active backup for business</description>
   <changelog>*15.0.1* Initial release</changelog>
+  <depends>
+		<module>framework ge 15.0.17.53</module>
+	</depends>
   <license>AGPLv3</license> 
   <menuitems>
     <synologyactivebackupforbusiness>Synology Active Backup for Business</synologyactivebackupforbusiness>
