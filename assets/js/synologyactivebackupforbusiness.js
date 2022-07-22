@@ -70,34 +70,41 @@ function loadStatus(e)
 
 			if (lastCheckCode !== check_code || status.html.force == true)
 			{
-				$('div:first-child', box_area).hide("fast", function()
+				if (lastCheckCode === check_code)
 				{
-					$(box_area).html(status.html.body);
-					$('div:first-child', box_area).show("fast");
-				});
-				
-				// if (error_code === 0)
-				// {
-				// 	// const STATUS_COMPLETED 		= 100;		//1 Completed 		(Idle - Completed)
-				// 	// const STATUS_CANCEL			= 150;		//2 Cancel 			(Idle - Canceled)
-				// 	// const STATUS_BACKUP_RUN		= 300;		//3 Backup en curso (Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s))
-				// 	// const STATUS_NO_CONNECTION 	= 400;		//4 No conectado 	(No connection found)
-				// 	// const STATUS_UNKNOWN 		= 99990;	//99990 - status desconocido
-				// 	// const STATUS_UNKNOWN_IDEL	= 99991;	//99991 - status Idel desconocido
+					$(box_area).find('div[class=panel-body]').html($($.parseHTML(status.html.body)).find('div[class=panel-body]').html());
+				}
+				else
+				{
+					$('div:first-child', box_area).hide("fast", function()
+					{
+						$(box_area).html(status.html.body);
+						$('div:first-child', box_area).show("fast");
+					});
+				}
 
-				// 	switch (status_code)
-				// 	{
-				// 		case 100:
-				// 		case 150:
-				// 		case 300:
-				// 		case 400:
-				// 			break;
-				// 		default:
-				// 			break;
-				// 	}
+				if (error_code === 0)
+				{
+					// const STATUS_COMPLETED 		= 100;		//1 Completed 		(Idle - Completed)
+					// const STATUS_CANCEL			= 150;		//2 Cancel 			(Idle - Canceled)
+					// const STATUS_BACKUP_RUN		= 300;		//3 Backup en curso (Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s))
+					// const STATUS_NO_CONNECTION 	= 400;		//4 No conectado 	(No connection found)
+					// const STATUS_UNKNOWN 		= 99990;	//99990 - status desconocido
+					// const STATUS_UNKNOWN_IDEL	= 99991;	//99991 - status Idel desconocido
 
-				// 	// $('div.panel-version', box_area).html("<b>Agent Version: " + status.agent_version.full + "</b>");
-				// }
+					switch (status_code)
+					{
+						case 100:
+						case 150:
+						case 300:
+						case 400:
+							break;
+						default:
+							break;
+					}
+
+					// $('div.panel-version', box_area).html("<b>Agent Version: " + status.agent_version.full + "</b>");
+				}
 
 			
 			}

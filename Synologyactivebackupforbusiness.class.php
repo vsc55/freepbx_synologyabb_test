@@ -17,6 +17,8 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
         'nextbackup' => '',
         'server_status' => '',
         'portal' => '',
+		'html' => '',
+		'error' => ''
     );
 
 	const STATUS_NULL			= -1;		// No se ha definido ningun estado.
@@ -436,6 +438,10 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		return $data_return;
 	}
 	
+	private function parseUnitConvert($data)
+	{
+		return ((int) filter_var($data, FILTER_SANITIZE_NUMBER_INT) == 0 ? 0 : $data);
+	}
 
 	public function isAgentInstalled() {
 		return file_exists($this->getABBCliPath());
@@ -451,17 +457,21 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		return self::$default_agent_status_data;
 	}
 
-
 	public function getAgentStatus($return_error = true) {
 		$hook 		= $this->runHookCheck("status", "get-cli-status");
 		$hook_data  = $hook['hook_data']['data'];
 		$error_code = $hook['error'];
 		$return 	= $this->getAgentStatusDefault();
-		$t_html 	= array('force' => false, 'body' => null);
+		$t_html 	= array(
+			'force' => false,
+			'body' => null
+		);
+
+		$error_code_array = null;
+		$status_code = self::STATUS_NULL;
 
 		if ($error_code === self::ERROR_ALL_GOOD)
-		{
-			$status_code = self::STATUS_NULL;
+		{	
 			$t_info = array();
 
 			$hook_data['lastbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $hook_data['lastbackup']);
@@ -540,25 +550,21 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 					$t_status_info['progressdata'] = preg_split('/[\/]+/', $t_status_info['progress'][0]);
 					$t_status_info['progressdata'] = array_map('trim', $t_status_info['progressdata']);
 					
-					
 					$t_info['progress'] = array(
 						'all' 	=> $t_status_info_msg,
-						'send' 	=> \ByteUnits\parse($t_status_info['progressdata'][0])->numberOfBytes(),
-						'total' => \ByteUnits\parse($t_status_info['progressdata'][1])->numberOfBytes(),
+						'send' 	=> \ByteUnits\parse($this->parseUnitConvert($t_status_info['progressdata'][0]))->numberOfBytes(),
+						'total' => \ByteUnits\parse($this->parseUnitConvert($t_status_info['progressdata'][1]))->numberOfBytes(),
 						'speed' => $t_status_info['progress'][1],
 					);
 					break;
 
 				case strtolower("No connection found"):	// No connection found
 					$status_code =  self::STATUS_NO_CONNECTION;
-					$t_html = array(
-						'force' => false,
-						'body' => $this->showPage("main.body.login"),
-					);
 					break;
 
 				default:
 					$status_code = self::STATUS_UNKNOWN;
+					break;
 			}
 
 			if (! is_array($status_code))
@@ -566,10 +572,39 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 				$status_code = $this->getStatusMsgByCode($status_code, true);
 			}
 			$hook_data['info_status'] = array_merge($status_code, $t_info);
-
 			if ($status_code['code'] >= self::STATUS_UNKNOWN )
 			{
-				$this->logger->warning( sprintf("%s->%s - Code (%s): Status not controlled [%s]!", $this->module_name, __FUNCTION__, $status_code['code'], $hook_data['server_status']));
+				$this->logger->warning( sprintf("%s->%s - Code (%s): Status not controlled [%s]!", $this->module_name, __FUNCTION__, $status_code['code'], $hook_data['server_status']));	
+			}
+
+			switch (strtolower($t_status_info_type))
+			{
+				case strtolower("Idle"):
+					$t_html = array(
+						'force' => false,
+						'body' 	=> $this->showPage("main.body.info", array( 'info' => $hook_data )),
+					);
+					break;
+				case strtolower("Backing up..."):
+					$t_html = array(
+						'force' => true,
+						'body' 	=> $this->showPage("main.body.info", array( 'info' => $hook_data )),
+					);
+					break;
+
+				case strtolower("No connection found"):
+					$t_html = array(
+						'force' => false,
+						'body' => $this->showPage("main.body.login"),
+					);
+					break;
+
+				case strtolower("Error"):
+				default:
+					$t_html = array(
+						'force' => false,
+						'body' 	=> $this->showPage("main.body.error", array( 'error_info' => $status_code )),
+					);
 			}
 
 			$return = $hook_data;
@@ -580,7 +615,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		{
 			$t_html = array(
 				'force' => false,
-				'body' => $this->showPage("main.body.error", array( 'error_info' => $error_code_array )),
+				'body' 	=> $this->showPage("main.body.error", array( 'error_info' => $error_code_array )),
 			);
 		}
 
@@ -666,7 +701,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		switch($status_code)
 		{
 			case self::STATUS_BACKUP_RUN:
-				$msg = "BackingUp";
+				$msg = _("BackingUp");
 				break;
 
 			case self::STATUS_IDLE_CANCEL:
