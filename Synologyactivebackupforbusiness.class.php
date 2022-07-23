@@ -424,10 +424,9 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 				$data_return = array("status" => true, "data" => $status_info);
 				break;
 			case 'setagentcreateconnection':
-				$agent_server 	= $this->getReq("agent-server", "");
-				$agent_username = $this->getReq("agent-user", "");
-				$agent_password = $this->getReq("agent-password", "");
-
+				$agent_server 	= $this->getReq("ABBServer", "");
+				$agent_username = $this->getReq("ABBUser", "");
+				$agent_password = $this->getReq("ABBPassword", "");
 				$return_status = $this->setAgentConnection($agent_server, $agent_username, $agent_password);
 
 				$data_return = array("status" => true, "data" => $return_status);
@@ -438,8 +437,8 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 				break;
 
 			case 'setagentlogout':
-				$agent_username = $this->getReq("agent-user", "");
-				$agent_password = $this->getReq("agent-password", "");
+				$agent_username = $this->getReq("ABBUser", "");
+				$agent_password = $this->getReq("ABBPassword", "");
 
 				$data_return = array("status" => true, "data" => $this->setAgentLogOut($agent_username, $agent_password));
 				break;
@@ -456,6 +455,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 	}
 
 	public function isAgentInstalled() {
+		return false;
 		return file_exists($this->getABBCliPath());
 	}
 
@@ -683,24 +683,17 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		);
 		$hook_params = array_map('trim', $hook_params);
 
-		// if (empty($hook_params['server']) || empty($hook_params['username']) || empty($hook_params['password']))
-		// {
-		// 	$error_code = self::ERROR_MISSING_ARGS;
-		// }
-		// else
-		// {
-			$hook 		= $this->runHookCheck("createconnection", "set-cli-create-connection", $hook_params);
-			$hook_data  = $hook['hook_data']['data'];
-			$error_code = $hook['error'];
+		$hook 		= $this->runHookCheck("createconnection", "set-cli-create-connection", $hook_params);
+		$hook_data  = $hook['hook_data']['data'];
+		$error_code = $hook['error'];
 
-			//DEBUG!!!!!!
-			$return = $hook;
+		//DEBUG!!!!!!
+		// $return = $hook;
 
-			if ($error_code === self::ERROR_ALL_GOOD)
-			{
-				// $hook_info = $hook['hook_data'];
-			}
-		// }
+		if ($error_code === self::ERROR_ALL_GOOD)
+		{
+			// $hook_info = $hook['hook_data'];
+		}
 
 		$return['error'] = $this->getErrorMsgByErrorCode($error_code, true);
 		return $return;
@@ -708,10 +701,13 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 
 	public function setAgentReConnect()
 	{
+		$return = array();
 		$hook 	= $this->runHookCheck("reconnect", "set-cli-reconnect");
-		$return = array(
-			'error' => $this->getErrorMsgByErrorCode($hook['error'], true)
-		);
+
+		//DEBUG!!!!!!
+		//$return = $hook;
+
+		$return['error'] = $this->getErrorMsgByErrorCode($hook['error'], true);
 		return $return;
 	}
 
@@ -729,7 +725,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		$error_code = $hook['error'];
 
 		//DEBUG!!!!!!
-		$return = $hook;
+		//$return = $hook;
 
 		if ($error_code === self::ERROR_ALL_GOOD)
 		{
@@ -890,9 +886,5 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		}
 		return $return_date;
 	}
-
-
-	
-
 
 }

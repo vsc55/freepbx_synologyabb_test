@@ -61,7 +61,7 @@
         {
             $cmd = sprintf("%s -c -q -a %s -u %s -p %s 2>&1", $syno->getABBCliPath(), $server, $username, $password);
             exec($cmd, $out, $ret);
-            $data_return['exec'] = array('cmd' => $cmd, 'ret' => $ret, 'out' => $out);
+            $data_return['exec'] = array('cmd' => str_replace(sprintf("-p %s",$password), "-p ******", $cmd), 'ret' => $ret, 'out' => $out);
 
             if (! is_array($out))
             {

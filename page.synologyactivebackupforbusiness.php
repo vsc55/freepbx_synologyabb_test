@@ -10,7 +10,7 @@
                 <?php
                 if (! $synoClass->isAgentInstalled())
                 {
-                    echo sprintf('<div class="alert alert-warning" role="alert">%s</div>', _("The agent has been detected that the agent is installed, follow the steps below to install it."));
+                    echo sprintf('<div class="alert alert-warning" role="alert">%s</div>', _("It has been detected that the active backup for business agent is not installed, please follow the steps below to install it."));
                     echo $synoClass->showPage("main.steps.install");
                 }
                 else

@@ -29,6 +29,14 @@ function box_resize()
 }
 
 
+function loadStatusForceRefresh(e)
+{
+	timerStop();
+	lastCheckCode = null;
+	loadStatus(e);
+}
+
+
 function loadStatus(e)
 {
     timerStop();
@@ -119,4 +127,4 @@ function loadStatus(e)
 function timerStop()
 {
     clearTimeout(timerRefresInfo);
-} 
+}
