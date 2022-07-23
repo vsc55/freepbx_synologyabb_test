@@ -1,18 +1,23 @@
 <module>
-  <rawname>synologyactivebackupforbusiness</rawname>
-  <repo>standard</repo>
-  <name>Synology Active Backup for Business</name>
-  <version>16.0.1</version>
-  <category>Admin</category>
-  <publisher>Javier Pastor Garcia aka VSC55</publisher>
-  <description>Interface to configure and monitor backup status with synology active backup for business</description>
-  <changelog>*16.0.1* Initial release</changelog>
-  <depends>
-		<module>framework ge 15.0.17.53</module>
-	</depends>
-  <license>AGPLv3</license> 
-  <menuitems>
-    <synologyactivebackupforbusiness>Synology Active Backup for Business</synologyactivebackupforbusiness>
-  </menuitems>
-  <supported>16.0</supported>
+    <rawname>synologyactivebackupforbusiness</rawname>
+    <repo>standard</repo>
+    <name>Synology Active Backup for Business</name>
+    <version>16.0.1</version>
+    <category>Admin</category>
+    <publisher>Javier Pastor Garcia aka VSC55</publisher>
+    <description>Interface to configure and monitor backup status with synology active backup for business</description>
+    <changelog>*16.0.1* Initial release</changelog>
+    <depends>
+        <module>framework ge 15.0.17.53</module>
+    </depends>
+    <license>AGPLv3</license> 
+    <menuitems>
+        <synologyactivebackupforbusiness>Synology Active Backup for Business</synologyactivebackupforbusiness>
+    </menuitems>
+    <supported>16.0</supported>
+    <hooks>
+		<dashboard class="Overview" namespace="FreePBX\modules\Dashboard\Sections">
+			<method callingMethod="getSummary" class="Synologyactivebackupforbusiness" namespace="FreePBX\modules">dashboardService</method>
+		</dashboard>
+	</hooks>
 </module>

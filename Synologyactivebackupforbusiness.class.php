@@ -341,7 +341,58 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 	public function getActionBar($request) {}
 	
 	public function getRightNav($request) {}
-	
+
+	public function dashboardService() {
+		$status = array(
+			'title' => _('ABB Status Backup'),
+			'order' => 3,
+		);
+
+		$data = $this->getAgentStatus(true);
+
+		$status_code 	 = $data['info_status']['code'];
+		$status_msg 	 = $data['info_status']['msg'];
+
+		// Generate a tooltip
+		$status_msg_html = htmlentities(\ForceUTF8\Encoding::fixUTF8($status_msg), ENT_QUOTES,"UTF-8");
+
+		$AlertGlyphicon = array(
+			'type' => '',
+			"tooltip" => $status_msg_html,
+			"glyph-class" => ''
+		);
+
+		switch($status_code)
+		{
+			case self::STATUS_IDLE_COMPLETED:
+				$AlertGlyphicon['type'] = "ok";
+				$AlertGlyphicon['glyph-class'] = "glyphicon-floppy-saved text-success";
+				break;
+			case self::STATUS_BACKUP_RUN:
+				$status_msg .= " - " . $data['info_status']['progress']['all'];
+				$AlertGlyphicon['tooltip'] = htmlentities(\ForceUTF8\Encoding::fixUTF8($status_msg), ENT_QUOTES,"UTF-8");
+
+				$AlertGlyphicon['type'] = "info";
+				$AlertGlyphicon['glyph-class'] = "glyphicon-export text-info";
+				$status = array_merge($status, $AlertGlyphicon);
+				// glyphicon-floppy-open
+				break;
+			case self::STATUS_IDLE:				// (Idle) no copy has been made yet.
+			case self::STATUS_IDLE_CANCEL:
+			case self::STATUS_IDLE_FAILED:
+				$AlertGlyphicon = $this->Dashboard()->genStatusIcon('warning', $status_msg);
+				break;
+			default:
+				$AlertGlyphicon = $this->Dashboard()->genStatusIcon('error', $status_msg);
+				break;
+		}
+
+
+		$status = array_merge($status, $AlertGlyphicon);
+		return array($status);
+	}
+
+
 	public function showPage($page, $params = array()) {
 		$page = trim($page);
 		$page_show = '';
@@ -455,7 +506,6 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 	}
 
 	public function isAgentInstalled() {
-		return false;
 		return file_exists($this->getABBCliPath());
 	}
 
@@ -744,7 +794,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		switch($status_code)
 		{
 			case self::STATUS_BACKUP_RUN:
-				$msg = _("BackingUp");
+				$msg = _("Backup in Progress...");
 				break;
 
 			case self::STATUS_IDLE_CANCEL:
