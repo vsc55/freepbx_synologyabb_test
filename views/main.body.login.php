@@ -60,7 +60,13 @@
 		if(validaFormABB())
 		{
 			timerStop();
-			$.post(window.FreePBX.ajaxurl, $("#formlogin").serialize(),function(res)
+
+			var form = $("#formlogin");
+			var post_data = form.serialize();
+
+			form.find(':input:not(:disabled)').prop('disabled',true);
+
+			$.post(window.FreePBX.ajaxurl, post_data, function(res)
 			{
 				var data 	= res.data;
 				var error 	= data.error;
@@ -72,6 +78,16 @@
 				else
 				{
 					fpbxToast('<i class="fa fa-exclamation-triangle" aria-hidden="true"></i>&nbsp;&nbsp;' + error.msg, '', 'warning');
+					form.find(':input(:disabled)').prop('disabled', false);
+					switch(error.code)
+					{
+						case 550:
+							$("#ABBServer").focus();
+							break;
+						case 612:
+							$("#ABBUser").focus();
+							break;
+					}
 					loadStatus();
 				}
 			});

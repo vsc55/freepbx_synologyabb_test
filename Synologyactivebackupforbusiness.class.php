@@ -439,9 +439,9 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 	public function ajaxRequest($req, &$setting) {
 		// ** Allow remote consultation with Postman **
 		// ********************************************
-		$setting['authenticate'] = false;
-		$setting['allowremote'] = true;
-		return true;
+		// $setting['authenticate'] = false;
+		// $setting['allowremote'] = true;
+		// return true;
 		// ********************************************
 		switch($req)
 		{
