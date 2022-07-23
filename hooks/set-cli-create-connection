@@ -28,7 +28,7 @@
     $file = $syno->getHookFilename($settings['hook_file'], $settings['hook_token']);
     if (file_exists($file))
     {
-        $msg_err = "Hook is already running, process aborting.";
+        $msg_err = _("Hook is already running, process aborting.");
         $v->sendSyslog($msg_err);
         throw new \Exception($msg_err);
     }

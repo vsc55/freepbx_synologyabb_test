@@ -97,6 +97,21 @@
 
 
 
+    // @@@ EL DISPOSITIVO HA SIDO ELIMINADO EN EL SERVIDOR
+    //
+    // # abb-cli -s
+    // Server address: IP SERVER                        Username: UserCopias
+    // Last backup time:  -                             Next backup time:  -
+    // Service Status: Error  - The current device has been removed from the server. Please contact your administrator for further assistance.
+
+    // Restore portal:  -
+
+    // For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
+    // Retrieved service status successfully
+    //
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
     // ----------------- return ---------------------
 
 
@@ -124,7 +139,7 @@
     $file = $syno->getHookFilename($settings['hook_file'], $settings['hook_token']);
     if (file_exists($file))
     {
-		$msg_err = "Hook is already running, process aborting.";
+		$msg_err = _("Hook is already running, process aborting.");
         $v->sendSyslog($msg_err);
         throw new \Exception($msg_err);
     }

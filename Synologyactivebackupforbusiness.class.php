@@ -47,7 +47,8 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 	const ERROR_AGENT_ENDED_IN_ERROR 		= 503;
 	const ERROR_AGENT_RETURN_UNCONTROLLED 	= 504;
 
-	const ERROR_AGENT_ALREADY_CONNECTED = 520;	// (Already connected)
+	const ERROR_AGENT_ALREADY_CONNECTED 	= 520;	// (Already connected)
+	const ERROR_AGENT_NOT_ALREADY_CONNECTED = 521;	// (Not Already connected)
 
 	const ERROR_AGENT_SERVER_CHECK 		= 550;
 
@@ -211,7 +212,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		return true;
 	}
 
-	private function runHookCheck($hook_file, $hook_run, $hook_params = array(), $decode = true) {
+	private function runHookCheck($hook_file, $hook_run, $hook_params = array(), $decode = true, $timeout = 30) {
 		$error_code = self::ERROR_NOT_DEFINED;
 		$hook_info 	= null;
 		$hook_token = uniqid('hook');
@@ -223,7 +224,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		$this->runHook($hook_run, $hook_params);
 
 		// We wait 30 seconds to see if the file with the data is created
-		$maxloops = 60;
+		$maxloops = $timeout * 2;
 		$hookTimeOut = true;
 		while ($maxloops--)
 		{
@@ -279,13 +280,14 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		}
 
 		return array(
-			'hook_file' => $hook_file,
-			'hook_run' 	=> $hook_run,
-			'hook_token'=> $hook_token,
-			'hook_data'	=> $hook_info,
-			'file' 		=> $file,
-			'decode'	=> $decode,
-			'error' 	=> $error_code,
+			'hook_file' 	=> $hook_file,
+			'hook_run' 		=> $hook_run,
+			'hook_token'	=> $hook_token,
+			'hook_data'		=> $hook_info,
+			'hook_timeout' 	=> $timeout,
+			'file' 			=> $file,
+			'decode'		=> $decode,
+			'error' 		=> $error_code,
 		);
 	}
 
@@ -395,6 +397,8 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 			case "getagentversion":
 			case "getagentstatus":
 			case "setagentcreateconnection":
+			case "setagentreconect":
+			case "setagentlogout":
 				return true;
 				break;
 
@@ -426,10 +430,18 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 
 				$return_status = $this->setAgentConnection($agent_server, $agent_username, $agent_password);
 
-
-
-
 				$data_return = array("status" => true, "data" => $return_status);
+				break;
+
+			case 'setagentreconnect':
+				$data_return = array("status" => true, "data" => $this->setAgentReConnect());
+				break;
+
+			case 'setagentlogout':
+				$agent_username = $this->getReq("agent-user", "");
+				$agent_password = $this->getReq("agent-password", "");
+
+				$data_return = array("status" => true, "data" => $this->setAgentLogOut($agent_username, $agent_password));
 				break;
 
 			default:
@@ -694,6 +706,41 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		return $return;
 	}
 
+	public function setAgentReConnect()
+	{
+		$hook 	= $this->runHookCheck("reconnect", "set-cli-reconnect");
+		$return = array(
+			'error' => $this->getErrorMsgByErrorCode($hook['error'], true)
+		);
+		return $return;
+	}
+
+	public function setAgentLogOut($user, $pass)
+	{
+		$return 	 = array();
+		$hook_params = array(
+			"username" 	=> $user,
+			"password" 	=> $pass,
+		);
+		$hook_params = array_map('trim', $hook_params);
+
+		$hook 		= $this->runHookCheck("logout", "set-cli-logout", $hook_params);
+		$hook_data  = $hook['hook_data']['data'];
+		$error_code = $hook['error'];
+
+		//DEBUG!!!!!!
+		$return = $hook;
+
+		if ($error_code === self::ERROR_ALL_GOOD)
+		{
+			// $hook_info = $hook['hook_data'];
+		}
+
+		$return['error'] = $this->getErrorMsgByErrorCode($error_code, true);
+		return $return;
+	}
+
+
 
 
 	public function getStatusMsgByCode($status_code, $return_array = false) {
@@ -775,8 +822,12 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 				$msg = _("The server is not available!");
 				break;
 
-			case self::ERROR_AGENT_ALREADY_CONNECTED:
-				$msg = _("Seynolgoy Agnet Already connected!");
+			case self::ERROR_AGENT_ALREADY_CONNECTED: //520
+				$msg = _("Synology Agnet Already connected!");
+				break;
+			
+			case self::ERROR_AGENT_NOT_ALREADY_CONNECTED: //521
+				$msg = _("Synology Agent Not Already Connected!");
 				break;
 
 			case self::ERROR_AGENT_SERVER_AUTH_FAILED: //511
