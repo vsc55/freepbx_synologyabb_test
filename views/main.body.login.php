@@ -32,7 +32,12 @@
 	</div>
 </div>
 
-<script>
+<script type="text/javascript">
+	$('#formlogin').keypress((e) => {
+		if (e.which === 13) {
+			$("#ABBCreateNow").trigger("click");
+		}
+	});
 	function validaFormABB()
 	{
 		if($("#ABBServer").val() == "")

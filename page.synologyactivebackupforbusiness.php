@@ -6,7 +6,7 @@
 <div class="container-fluid">
 	<div class="row">
 		<div class="col-sm-12">
-			<div class="fpbx-container">
+			<div class="fpbx-container" id="container-box_main">
                 <?php
                 if (! $synoClass->isAgentInstalled())
                 {
@@ -18,6 +18,7 @@
                     echo $synoClass->showPage("main");
                 }
                 ?>
+                </div>
 			</div>
 		</div>
 	</div>

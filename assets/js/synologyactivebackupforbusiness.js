@@ -1,5 +1,6 @@
 var timerRefresInfo;
 var timerRefresInterval;
+var timerRefresIntervalRun;
 var lastCheckCode;
 
 $(document).ready(function()
@@ -10,8 +11,8 @@ $(document).ready(function()
 	// Mitigation of "offset().top" change detection problem.
 	$("#page_body > .global-message-banner").on("remove", function () { box_resize(); });
 
-
-	timerRefresInterval = 5000;
+	timerRefresInterval 	= 5000;
+	timerRefresIntervalRun 	= 1000;
 	box_resize();
     loadStatus();
 });
@@ -68,6 +69,7 @@ function loadStatus(e)
 			var box_area = $("#synologyabb-panel");
 			var error_code = status.error.code;
 			var status_code = undefined;
+			var tRefresInterval = timerRefresInterval;
 
 			if ( 'info_status' in status && 'code' in  status.info_status )
 			{
@@ -104,9 +106,12 @@ function loadStatus(e)
 					{
 						case 100:
 						case 150:
-						case 300:
 						case 400:
 							break;
+
+						case 300:
+							// When the copy is running the data is read at a shorter interval.
+							tRefresInterval = timerRefresIntervalRun;
 						default:
 							break;
 					}
@@ -120,7 +125,7 @@ function loadStatus(e)
 			lastCheckCode = check_code;
 		}
 		box_resize();
-        timerRefresInfo = setTimeout(loadStatus, timerRefresInterval);
+        timerRefresInfo = setTimeout(loadStatus, tRefresInterval);
 	});
 }
 

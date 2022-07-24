@@ -1,0 +1,45 @@
+#container-box_main {
+	padding-top: 20px;
+
+	.abb-panel-main {
+		display: none;
+
+		.panel-heading {
+			@url_ico_abb: url('images/entry.cgi.png');
+			padding-left: 50px;
+
+			background-image: @url_ico_abb, url('images/null.png');
+			background-size: 30px 30px, 30px 30px;
+			background-position: 5px center, right 5px center;
+			background-repeat: no-repeat, no-repeat;
+		}
+
+		.panel-body
+		{
+			.media
+			{
+				min-height: 50px;
+				margin-bottom: 10px;
+				border: 1px solid transparent;
+				
+				border-radius: 4px;
+			
+				background-color: #f8f8f8;
+				border-color: #e7e7e7;
+			
+				padding: 15px 15px 15px 15px;
+
+				.page-header
+				{
+					margin: 0px 0px 20px;
+				}
+			}
+		}
+
+		#box_copy_progress {
+			h1 {
+				font-size: 43px;
+			}
+		}
+	}
+}

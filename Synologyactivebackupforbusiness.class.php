@@ -344,7 +344,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 
 	public function dashboardService() {
 		$status = array(
-			'title' => _('ABB Status Backup'),
+			'title' => _('Synology ABB'),
 			'order' => 3,
 		);
 
@@ -448,7 +448,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 			case "getagentversion":
 			case "getagentstatus":
 			case "setagentcreateconnection":
-			case "setagentreconect":
+			case "setagentreconnect":
 			case "setagentlogout":
 				return true;
 				break;
@@ -519,7 +519,14 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		return self::$default_agent_status_data;
 	}
 
-	public function getAgentStatus($return_error = true) {
+	public function getAgentStatus($return_error = true, $force = false) 
+	{
+		
+		if ($force == true)	// We force to refresh the status data
+		{
+			$this->setAgentReConnect();
+		}
+
 		$hook 		= $this->runHookCheck("status", "get-cli-status");
 		$hook_data  = $hook['hook_data']['data'];
 		$error_code = $hook['error'];
@@ -641,16 +648,17 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 
 			switch (strtolower($t_status_info_type))
 			{
+				case strtolower("Error"):
 				case strtolower("Idle"):
 					$t_html = array(
 						'force' => false,
-						'body' 	=> $this->showPage("main.body.info", array( 'info' => $hook_data )),
+						'body' 	=> $this->showPage("main.body.info", array( 'info' => $hook_data, 'status' => $status_code, 'status_type' => strtolower($t_status_info_type) )),
 					);
 					break;
 				case strtolower("Backing up..."):
 					$t_html = array(
 						'force' => true,
-						'body' 	=> $this->showPage("main.body.info", array( 'info' => $hook_data )),
+						'body' 	=> $this->showPage("main.body.info", array( 'info' => $hook_data, 'status' => $status_code, 'status_type' => strtolower($t_status_info_type) )),
 					);
 					break;
 
@@ -661,7 +669,6 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 					);
 					break;
 
-				case strtolower("Error"):
 				default:
 					$t_html = array(
 						'force' => false,

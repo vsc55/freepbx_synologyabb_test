@@ -126,7 +126,7 @@
 
     $syno->writeFileHook($file, $data_return);
 
-    dbug($data_return);
+    // dbug($data_return);
 
     exit();
 ?>
