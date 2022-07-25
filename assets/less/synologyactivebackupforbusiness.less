@@ -5,7 +5,7 @@
 		display: none;
 
 		.panel-heading {
-			@url_ico_abb: url('images/entry.cgi.png');
+			@url_ico_abb: url('images/abb_ico_64.png');
 			padding-left: 50px;
 
 			background-image: @url_ico_abb, url('images/null.png');
@@ -40,6 +40,52 @@
 			h1 {
 				font-size: 43px;
 			}
+		}
+	}
+}
+
+#box_loading {
+
+	&.loader-background {
+		width: 100%;
+		height: 100%;
+		position: absolute;
+		background-color: transparent;
+		z-index: 9999;
+		top: 0;
+		left: 0;
+		
+		.background-opacity
+		{
+			width: 100%;
+			height: 100%;
+			position: relative;
+			background-color: black;
+			top: 0;
+			left: 0;
+			opacity: 0.2;
+		}
+
+		.loader{
+			border: 26px solid transparent;
+			border-top: 26px solid blue;
+			border-bottom: 26px solid blue;
+			border-radius: 50%;
+			width: 160px;
+			height: 160px;
+			animation: spin 1.5s linear infinite;
+			position: absolute; /* cambiamos de fixed a absolute */
+			/* Ponemos el valor de left, bottom, right y top en 0 */
+			left: 0;
+			bottom: 0; 
+			right: 0; 
+			top: 0; 
+			margin: auto; /* Centramos vertical y horizontalmente */
+		}
+
+		@keyframes spin {
+			0% { transform: rotate(0deg); }
+			100% { transform: rotate(360deg); }
 		}
 	}
 }

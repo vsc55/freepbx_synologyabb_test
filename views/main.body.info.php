@@ -99,7 +99,7 @@
 
                         <div class="media-right">
                             <a href="<?php echo $info['portal']?>"  target="_blank">
-                                <img class="media-object" src="/admin/assets/synologyactivebackupforbusiness/images/entry.cgi.png" alt="<?php echo _('Portal Recovery')?>" title="<?php echo _('Portal Recovery')?>">
+                                <img class="media-object" src="/admin/assets/synologyactivebackupforbusiness/images/abb_ico_64.png" alt="<?php echo _('Portal Recovery')?>" title="<?php echo _('Portal Recovery')?>">
                             </a>
                         </div>
                     </div>
@@ -216,6 +216,7 @@
     $("#btn-force-refresh").click( function()
 	{
         timerStop();
+        boxLoading(true);
         fpbxToast("<?php echo _("Started data update process..."); ?>", '', 'info');
         var post_data = {
             module	: 'synologyactivebackupforbusiness',

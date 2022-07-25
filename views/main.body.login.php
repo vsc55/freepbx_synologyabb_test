@@ -1,7 +1,7 @@
 <div class="panel panel-warning" style="display: none;">
 	<div class="panel-heading">
 		<h3 class="panel-title">
-			<img src='modules/synologyactivebackupforbusiness/assets/images/entry.cgi-mini.png'>
+			<img src='modules/synologyactivebackupforbusiness/assets/images/abb_ico_24.png'>
 			<b><?php echo _("Not Connection, pending configuration!"); ?><b>
 		</h3>
     </div>
@@ -65,7 +65,7 @@
 		if(validaFormABB())
 		{
 			timerStop();
-
+			boxLoading(true);
 			var form = $("#formlogin");
 			var post_data = form.serialize();
 
@@ -93,6 +93,7 @@
 							$("#ABBUser").focus();
 							break;
 					}
+					boxLoading(false);
 					loadStatus();
 				}
 			});

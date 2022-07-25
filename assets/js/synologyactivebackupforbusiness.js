@@ -83,6 +83,7 @@ function loadStatus(e)
 				if (lastCheckCode === check_code)
 				{
 					$(box_area).find('div[class=panel-body]').html($($.parseHTML(status.html.body)).find('div[class=panel-body]').html());
+					boxLoading(false);
 				}
 				else
 				{
@@ -90,6 +91,7 @@ function loadStatus(e)
 					{
 						$(box_area).html(status.html.body);
 						$('div:first-child', box_area).show("fast");
+						boxLoading(false);
 					});
 				}
 
@@ -132,4 +134,16 @@ function loadStatus(e)
 function timerStop()
 {
     clearTimeout(timerRefresInfo);
+}
+
+function boxLoading(status)
+{
+	if (status == true)
+    {
+        $("#box_loading").show();
+    }
+	else
+	{
+		$("#box_loading").hide()
+	}
 }

@@ -344,52 +344,64 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 
 	public function dashboardService() {
 		$status = array(
-			'title' => _('Synology ABB'),
+			'title' => _('Synology Active Backup'),
 			'order' => 3,
 		);
-
 		$data = $this->getAgentStatus(true);
 
 		$status_code 	 = $data['info_status']['code'];
 		$status_msg 	 = $data['info_status']['msg'];
 
-		// Generate a tooltip
-		$status_msg_html = htmlentities(\ForceUTF8\Encoding::fixUTF8($status_msg), ENT_QUOTES,"UTF-8");
-
-		$AlertGlyphicon = array(
-			'type' => '',
-			"tooltip" => $status_msg_html,
-			"glyph-class" => ''
-		);
-
+		$AlertGlyphIcon = null;
 		switch($status_code)
 		{
 			case self::STATUS_IDLE_COMPLETED:
-				$AlertGlyphicon['type'] = "ok";
-				$AlertGlyphicon['glyph-class'] = "glyphicon-floppy-saved text-success";
+				$AlertGlyphIcon = $this->genStatusIcon('completed', $status_msg);
 				break;
 			case self::STATUS_BACKUP_RUN:
-				$status_msg .= " - " . $data['info_status']['progress']['all'];
-				$AlertGlyphicon['tooltip'] = htmlentities(\ForceUTF8\Encoding::fixUTF8($status_msg), ENT_QUOTES,"UTF-8");
-
-				$AlertGlyphicon['type'] = "info";
-				$AlertGlyphicon['glyph-class'] = "glyphicon-export text-info";
-				$status = array_merge($status, $AlertGlyphicon);
-				// glyphicon-floppy-open
+				$AlertGlyphIcon = $this->genStatusIcon('run', sprintf("%s - %s", $status_msg, $data['info_status']['progress']['all']));
 				break;
 			case self::STATUS_IDLE:				// (Idle) no copy has been made yet.
 			case self::STATUS_IDLE_CANCEL:
 			case self::STATUS_IDLE_FAILED:
-				$AlertGlyphicon = $this->Dashboard()->genStatusIcon('warning', $status_msg);
+				$AlertGlyphIcon = $this->genStatusIcon('warning', $status_msg);
 				break;
 			default:
-				$AlertGlyphicon = $this->Dashboard()->genStatusIcon('error', $status_msg);
+				$AlertGlyphIcon = $this->genStatusIcon('error', $status_msg);
 				break;
 		}
 
-
-		$status = array_merge($status, $AlertGlyphicon);
+		$status = array_merge($status, $AlertGlyphIcon);
 		return array($status);
+	}
+
+	private function genStatusIcon($type, $msg)
+	{
+		$list_types  = array(
+			'completed' => array(
+				'type' 	=> 'ok',
+				'class' => "glyphicon-floppy-saved text-success",
+			),
+			'run' => array(
+				'type' 	=> 'info',
+				'class' => "glyphicon-export text-info",	// glyphicon-floppy-open
+			),
+		);
+		
+		$data_return = array();
+		if (! array_key_exists($type, $list_types))
+		{
+			$data_return = $this->Dashboard()->genStatusIcon($type, $msg);
+		}
+		else
+		{
+			$data_return = array(
+				'type' 		  => empty($list_types[$type]['type']) ? $type : $list_types[$type]['type'],
+				"tooltip" 	  => htmlentities(\ForceUTF8\Encoding::fixUTF8($msg), ENT_QUOTES,"UTF-8"),
+				"glyph-class" => $list_types[$type]['class'],
+			);
+		}
+		return $data_return;
 	}
 
 
