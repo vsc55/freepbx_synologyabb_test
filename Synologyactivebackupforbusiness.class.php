@@ -349,8 +349,16 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		);
 		$data = $this->getAgentStatus(true);
 
-		$status_code 	 = $data['info_status']['code'];
-		$status_msg 	 = $data['info_status']['msg'];
+		if ($data['error']['code'] === self::ERROR_ALL_GOOD)
+		{
+			$status_code = $data['info_status']['code'];
+			$status_msg  = $data['info_status']['msg'];
+		}
+		else
+		{
+			$status_code = $data['error']['code'];
+			$status_msg  = $data['error']['msg'];
+		}
 
 		$AlertGlyphIcon = null;
 		switch($status_code)
