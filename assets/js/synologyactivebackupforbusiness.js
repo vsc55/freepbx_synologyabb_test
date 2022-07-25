@@ -144,6 +144,6 @@ function boxLoading(status)
     }
 	else
 	{
-		$("#box_loading").hide()
+		$("#box_loading").hide();
 	}
 }

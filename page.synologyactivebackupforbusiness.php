@@ -4,7 +4,9 @@
 ?>
 <h1><?php echo _("Synology Active Backup for Business"); ?></h1>
 <div id="box_loading" class="loader-background">
-    <div class="background-opacity"></div>
+    <div class="background-opacity">
+        <h1><?php echo _("Please Wait..."); ?></h1>
+    </div>
     <div class="loader"></div>
 </div>
 <div class="container-fluid">

@@ -199,6 +199,38 @@
             <?php endif ?>
         </div>
     </div>
+    <div class="panel-footer panel-version">
+		<b><?php echo sprintf( _("Agent Version: %s"), $syno->getAgentVersion() ); ?></b>
+	</div>
+</div>
+
+<div class="modal fade" id="LogoutFromServer" tabindex="-1" role="dialog" aria-labelledby="LogoutFromServerTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered  modal-lg modal-dialog-danger" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                <h4 class="modal-title" id="LogoutFromServerTitle"><?php echo _("Disconnect Device from Server"); ?></h4>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="formlogout">
+                    <input type="hidden" id="module" name="module" value="synologyactivebackupforbusiness"> 
+                    <input type="hidden" id="command" name="command" value="setagentlogout">
+                    <div class="form-group">
+                        <label for="ABBUser"><?php echo _("Username") ?></label>
+                        <input type="text" class="form-control" name="ABBUser" id="ABBUser" placeholder="<?php echo _("Username") ?>" required="required">
+                    </div>
+                    <div class="form-group">
+                        <label for="ABBPassword"><?php echo _("Password")?></label>
+                        <input type="password" class="form-control" name="ABBPassword" id="ABBPassword" placeholder="<?php echo _("Password")?>" required="required">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="ABBLogoutNow" class="btn btn-danger btn-block"><?php echo _("Logout from Server")?></button>
+                <!-- <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button> -->
+            </div>
+        </div>
+    </div>
 </div>
 
 <script type="text/javascript">
@@ -208,7 +240,7 @@
 			"<?php echo _("YES"); ?>", "<?php echo _("NO")?>",
 			function()
 			{
-				alert("Pending crate dialog!");
+				$('#LogoutFromServer').modal('show');
 			}
 		);
     });
@@ -228,4 +260,68 @@
             window.setTimeout(loadStatusForceRefresh, 500);
         });
     });
+
+    $('#LogoutFromServer').on('show.bs.modal', function (e)
+    {
+        $(this).find(':input[type=text], :input[type=password]').val("");
+    })
+
+    $('#LogoutFromServer').keypress((e) => {
+		if (e.which === 13) {
+			$("#ABBLogoutNow").trigger("click");
+		}
+	});
+	function validaFormABB()
+	{
+		if($("#ABBUser").val() == "")
+		{
+			fpbxToast("<?php echo _("The Username field cannot be empty!"); ?>", '', 'warning');
+			$("#ABBUser").focus();
+			return false;
+		}
+		if($("#ABBPassword").val() == "")
+		{
+			fpbxToast("<?php echo _("The Password field cannot be empty!"); ?>", '', 'warning');
+			$("#ABBPassword").focus();
+			return false;
+		}
+		return true;
+	}
+    $("#ABBLogoutNow").click( function()
+	{
+		if(validaFormABB())
+		{
+			timerStop();
+			boxLoading(true);
+			var form = $("#formlogout");
+			var post_data = form.serialize();
+
+			form.find(':input:not(:disabled)').prop('disabled',true);
+
+			$.post(window.FreePBX.ajaxurl, post_data, function(res)
+			{
+				var data 	= res.data;
+				var error 	= data.error;
+				if(error.code === 0)
+				{
+                    $('#LogoutFromServer').modal('hide');
+					fpbxToast('<i class="fa fa-check" aria-hidden="true"></i>&nbsp;&nbsp;' + '<?php echo _('Device Successfully Disconnected!'); ?>', '', 'success');
+					window.setTimeout(loadStatusForceRefresh, 1000);
+				}
+				else
+				{
+					fpbxToast('<i class="fa fa-exclamation-triangle" aria-hidden="true"></i>&nbsp;&nbsp;' + error.msg, '', 'warning');
+					form.find(':input(:disabled)').prop('disabled', false);
+					switch(error.code)
+					{
+						case 612:
+							$("#ABBUser").focus();
+							break;
+					}
+					boxLoading(false);
+					loadStatus();
+				}
+			});
+		}
+	});
 </script>

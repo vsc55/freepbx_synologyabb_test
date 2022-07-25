@@ -1,8 +1,7 @@
-<div class="panel panel-warning" style="display: none;">
+<div class="panel panel-warning abb-panel-main">
 	<div class="panel-heading">
 		<h3 class="panel-title">
-			<img src='modules/synologyactivebackupforbusiness/assets/images/abb_ico_24.png'>
-			<b><?php echo _("Not Connection, pending configuration!"); ?><b>
+			<?php echo _("Not Connection, pending configuration!"); ?>
 		</h3>
     </div>
     <div class="panel-body">

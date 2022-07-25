@@ -7,8 +7,8 @@
 
             <div class="jumbotron" id="">
                 <div class="container">
-                    <h1>Active Backup for Bussiness</h1>
-                    <p><center><img src='modules/synologyactivebackupforbusiness/assets/images/abb_ico_256.png'></center></p>
+                    <center><h1>Active Backup for Bussiness</h1></center>
+                    <!-- <p><center><img src='modules/synologyactivebackupforbusiness/assets/images/abb_ico_256.png'></center></p> -->
                 </div>
             </div>
             
