@@ -533,14 +533,12 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 
 	public function getAgentStatus($return_error = true, $force = false) 
 	{
-		
 		if ($force == true)	// We force to refresh the status data
 		{
 			$this->setAgentReConnect();
 		}
 
 		$hook 		= $this->runHookCheck("status", "get-cli-status");
-		$hook_data  = $hook['hook_data']['data'];
 		$error_code = $hook['error'];
 		$return 	= $this->getAgentStatusDefault();
 		$t_html 	= array(
@@ -552,7 +550,8 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		$status_code = self::STATUS_NULL;
 
 		if ($error_code === self::ERROR_ALL_GOOD)
-		{	
+		{
+			$hook_data  = $hook['hook_data']['data'];
 			$t_info = array();
 
 			$hook_data['lastbackup_date'] = \DateTime::createFromFormat('Y-m-d H:i', $hook_data['lastbackup']);
@@ -706,17 +705,16 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		return $return;
 	}
 
-
-	public function getAgentVersion($return_array = false, $return_error = true) {
-		
+	public function getAgentVersion($return_array = false, $return_error = true)
+	{	
 		$hook 		= $this->runHookCheck("version", "get-cli-version");
-		$hook_data  = $hook['hook_data']['data'];
 		$error_code = $hook['error'];
 		$return 	= "0.0.0-0";
 
 		if ($error_code === self::ERROR_ALL_GOOD)
 		{
-			$app_ver = $hook_data['version'];
+			$hook_data  = $hook['hook_data']['data'];
+			$app_ver 	= $hook_data['version'];
 			if (! empty($app_ver))
 			{
 				$return = $app_ver;
@@ -743,7 +741,8 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 	}
 
 
-	public function setAgentConnection($server, $user, $pass) {
+	public function setAgentConnection($server, $user, $pass)
+	{
 		$return 	 = array();
 		$hook_params = array(
 			"server" 	=> $server,
@@ -751,17 +750,15 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 			"password" 	=> $pass,
 		);
 		$hook_params = array_map('trim', $hook_params);
-
-		$hook 		= $this->runHookCheck("createconnection", "set-cli-create-connection", $hook_params);
-		$hook_data  = $hook['hook_data']['data'];
-		$error_code = $hook['error'];
+		$hook 		 = $this->runHookCheck("createconnection", "set-cli-create-connection", $hook_params);
+		$error_code  = $hook['error'];
 
 		//DEBUG!!!!!!
 		// $return = $hook;
 
 		if ($error_code === self::ERROR_ALL_GOOD)
 		{
-			// $hook_info = $hook['hook_data'];
+			// $hook_data  = $hook['hook_data']['data'];
 		}
 
 		$return['error'] = $this->getErrorMsgByErrorCode($error_code, true);
@@ -790,16 +787,10 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		$hook_params = array_map('trim', $hook_params);
 
 		$hook 		= $this->runHookCheck("logout", "set-cli-logout", $hook_params);
-		$hook_data  = $hook['hook_data']['data'];
 		$error_code = $hook['error'];
 
 		//DEBUG!!!!!!
 		//$return = $hook;
-
-		if ($error_code === self::ERROR_ALL_GOOD)
-		{
-			// $hook_info = $hook['hook_data'];
-		}
 
 		$return['error'] = $this->getErrorMsgByErrorCode($error_code, true);
 		return $return;
