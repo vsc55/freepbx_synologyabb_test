@@ -84,6 +84,8 @@ function loadStatus(e)
 				{
 					$(box_area).find('div[class=panel-body]').html($($.parseHTML(status.html.body)).find('div[class=panel-body]').html());
 					boxLoading(false);
+					
+					$('.modal-backdrop').remove(); // Fix: modal-backdrop not remove is modal is open
 				}
 				else
 				{
@@ -92,6 +94,8 @@ function loadStatus(e)
 						$(box_area).html(status.html.body);
 						$('div:first-child', box_area).show("fast");
 						boxLoading(false);
+						
+						$('.modal-backdrop').remove(); // Fix: modal-backdrop not remove is modal is open
 					});
 				}
 
