@@ -347,7 +347,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 			'title' => _('Synology Active Backup'),
 			'order' => 3,
 		);
-		$data = $this->getAgentStatus(true);
+		$data = $this->getAgentStatus(true, false, false);
 
 		if ($data['error']['code'] === self::ERROR_ALL_GOOD)
 		{
@@ -539,7 +539,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		return self::$default_agent_status_data;
 	}
 
-	public function getAgentStatus($return_error = true, $force = false) 
+	public function getAgentStatus($return_error = true, $force = false, $gen_html = true)
 	{
 		if ($force == true)	// We force to refresh the status data
 		{
@@ -707,7 +707,9 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 			);
 		}
 
-		if (! is_null($t_html['body']))	{ $return['html'] 	= $t_html; }
+		if ($gen_html) {
+			if (! is_null($t_html['body']))	{ $return['html'] 	= $t_html; }
+		}
 		if ($return_error) 				{ $return['error'] 	= $error_code_array; }
 
 		return $return;

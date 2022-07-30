@@ -2,7 +2,7 @@
     <rawname>synologyactivebackupforbusiness</rawname>
     <repo>standard</repo>
     <name>Synology Active Backup for Business</name>
-    <version>16.0.1</version>
+    <version>16.0.2</version>
     <category>Admin</category>
     <publisher>Javier Pastor Garcia aka VSC55</publisher>
     <description>Interface to configure and monitor backup status with synology active backup for business</description>
@@ -15,6 +15,12 @@
         <synologyactivebackupforbusiness>Synology Active Backup for Business</synologyactivebackupforbusiness>
     </menuitems>
     <supported>16.0</supported>
+    <console>
+		<command>
+			<name>synologyabb</name>
+            <class>Synologyactivebackupforbusiness</class>
+		</command>
+	</console>
     <hooks>
 		<dashboard class="Overview" namespace="FreePBX\modules\Dashboard\Sections">
 			<method callingMethod="getSummary" class="Synologyactivebackupforbusiness" namespace="FreePBX\modules">dashboardService</method>
