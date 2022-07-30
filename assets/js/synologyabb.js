@@ -46,7 +46,7 @@ function loadStatus(e)
 		e.preventDefault();
 	}
 	var post_data = {
-		module	: 'synologyactivebackupforbusiness',
+		module	: 'ynologyabb',
 		command	: 'getagentstatus',
 	};
 	$.post(window.FreePBX.ajaxurl, post_data, function(data) 

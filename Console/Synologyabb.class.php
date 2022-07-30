@@ -14,7 +14,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class Synologyactivebackupforbusiness extends Command
+class Synologyabb extends Command
 {    
 	protected function configure()
     {
@@ -69,7 +69,7 @@ class Synologyactivebackupforbusiness extends Command
 
     private function getSynoClass()
     {
-        return \FreePBX::Synologyactivebackupforbusiness();
+        return \FreePBX::Synologyabb();
     }
 
     private function showVersion($output)
@@ -82,8 +82,9 @@ class Synologyactivebackupforbusiness extends Command
     private function check($output, $force = false)
     {
         $syno   = $this->getSynoClass();
-        $status = $syno->getAgentStatus(true, $force, false);
+        $output->writeln(_("Getting Backup Status..."));
 
+        $status = $syno->getAgentStatus(true, $force, false);
         $error_code = $status['error'];
         if (is_array($error_code)) {
             $error_code = $error_code['code'];
@@ -95,7 +96,6 @@ class Synologyactivebackupforbusiness extends Command
         }
         else
         {
-            $output->writeln(_("Get Status Backup..."));
             $status_code = $status['info_status']['code'];
             switch($status_code)
             {
@@ -105,7 +105,7 @@ class Synologyactivebackupforbusiness extends Command
                     break;
                 
                 case $syno::STATUS_BACKUP_RUN:
-                    $output->writeln("<info>".sprintf(_("%s - %s"), $status['info_status']['msg'], $status['info_status']['progress']['all'])."</info>");
+                    $output->writeln("<info>".sprintf("%s - %s", $status['info_status']['msg'], $status['info_status']['progress']['all'])."</info>");
                     break;
 
                 case $syno::STATUS_IDLE:

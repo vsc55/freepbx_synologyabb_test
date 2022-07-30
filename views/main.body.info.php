@@ -99,7 +99,7 @@
 
                         <div class="media-right">
                             <a href="<?php echo $info['portal']?>"  target="_blank">
-                                <img class="media-object" src="/admin/assets/synologyactivebackupforbusiness/images/abb_ico_64.png" alt="<?php echo _('Portal Recovery')?>" title="<?php echo _('Portal Recovery')?>">
+                                <img class="media-object" src="/admin/assets/synologyabb/images/abb_ico_64.png" alt="<?php echo _('Portal Recovery')?>" title="<?php echo _('Portal Recovery')?>">
                             </a>
                         </div>
                     </div>
@@ -150,7 +150,7 @@
                             </div>
                         </div>
                         <div class="media-right">
-                            <img class="media-object" src="/admin/assets/synologyactivebackupforbusiness/images/<?php echo $ico_status_backup?>" alt="<?php echo $info['info_status']['msg']; ?>" title="<?php echo $info['info_status']['msg']; ?>">
+                            <img class="media-object" src="/admin/assets/synologyabb/images/<?php echo $ico_status_backup?>" alt="<?php echo $info['info_status']['msg']; ?>" title="<?php echo $info['info_status']['msg']; ?>">
                         </div>
                     </div>
 
@@ -172,7 +172,7 @@
                             </div>
                         </div>
                         <div class="media-right">
-                            <img class="media-object" src="/admin/assets/synologyactivebackupforbusiness/images/ico_info.png">
+                            <img class="media-object" src="/admin/assets/synologyabb/images/ico_info.png">
                         </div>
                     </div>
 
@@ -213,7 +213,7 @@
             </div>
             <div class="modal-body">
                 <form method="post" id="formlogout">
-                    <input type="hidden" id="module" name="module" value="synologyactivebackupforbusiness"> 
+                    <input type="hidden" id="module" name="module" value="synologyabb"> 
                     <input type="hidden" id="command" name="command" value="setagentlogout">
                     <div class="form-group">
                         <label for="ABBUser"><?php echo _("Username") ?></label>
@@ -251,7 +251,7 @@
         boxLoading(true);
         fpbxToast("<?php echo _("Started data update process..."); ?>", '', 'info');
         var post_data = {
-            module	: 'synologyactivebackupforbusiness',
+            module	: 'synologyabb',
             command	: 'setagentreconnect',
         };
 

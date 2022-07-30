@@ -116,13 +116,13 @@
 
 
     include __DIR__."/hook.parse.args.php";
-    $v = new \FreePBX\modules\Synologyactivebackupforbusiness\ParseArgs($argv, __FILE__);
+    $v = new \FreePBX\modules\Synologyabb\ParseArgs($argv, __FILE__);
     $settings = $v->getSettingAll();
 
 
     include_once '/etc/freepbx.conf';
     error_reporting(E_ALL);
-    $syno = \FreePBX::Synologyactivebackupforbusiness();
+    $syno = \FreePBX::Synologyabb();
 
     $error_code  = $syno::ERROR_NOT_DEFINED;
     $data_return = array(

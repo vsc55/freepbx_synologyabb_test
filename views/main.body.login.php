@@ -6,7 +6,7 @@
     </div>
     <div class="panel-body">
 		<form method="post" id="formlogin">
-			<input type="hidden" id="module" name="module" value="synologyactivebackupforbusiness"> 
+			<input type="hidden" id="module" name="module" value="synologyabb"> 
 			<input type="hidden" id="command" name="command" value="setagentcreateconnection">
 			<div class="form-group">
 				<label for="ABBServer"><?php echo _("IP/Address Server") ?></label>

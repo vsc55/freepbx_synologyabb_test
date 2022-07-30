@@ -8,7 +8,7 @@
 namespace FreePBX\modules;
 include __DIR__."/vendor/autoload.php";
 
-class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
+class Synologyabb extends \FreePBX_Helpers implements \BMO {
 	
 	public static $default_agent_status_data = array(
         'server' => '',
@@ -321,7 +321,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 		$set['readonly'] = 0;
 		$set['hidden'] = 0;
 		$set['level'] = 0;
-		$set['module'] = $this->module_name; //'synologyactivebackupforbusiness';  //disabled as it generates error, Fix FREEPBX-22756
+		$set['module'] = $this->module_name; //'synologyabb';  //disabled as it generates error, Fix FREEPBX-22756
 		$set['category'] = 'Synology Active Backup for Business';
 		$set['emptyok'] = 1;
 		$set['name'] = 'Path for abb-cli';
@@ -438,7 +438,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 			//clean up possible things that don't have to be here
 			$filename = strtolower(str_ireplace(array('..','\\','/'), "", $page_show));
 
-			$page_path = sprintf(_("%s/views/%s.php"), __DIR__, $filename);
+			$page_path = sprintf("%s/views/%s.php", __DIR__, $filename);
 			if (! file_exists($page_path))
 			{
 				$page_show = '';
@@ -889,7 +889,7 @@ class Synologyactivebackupforbusiness extends \FreePBX_Helpers implements \BMO {
 				break;
 
 			case self::ERROR_AGENT_ALREADY_CONNECTED: //520
-				$msg = _("Synology Agnet Already connected!");
+				$msg = _("Synology Agent Already connected!");
 				break;
 			
 			case self::ERROR_AGENT_NOT_ALREADY_CONNECTED: //521

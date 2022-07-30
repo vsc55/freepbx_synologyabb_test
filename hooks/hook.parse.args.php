@@ -1,5 +1,5 @@
 <?php
-    namespace FreePBX\modules\Synologyactivebackupforbusiness;
+    namespace FreePBX\modules\Synologyabb;
 
     class ParseArgs
     {

@@ -8,7 +8,7 @@
             <div class="jumbotron" id="">
                 <div class="container">
                     <center><h1>Active Backup for Bussiness</h1></center>
-                    <!-- <p><center><img src='modules/synologyactivebackupforbusiness/assets/images/abb_ico_256.png'></center></p> -->
+                    <!-- <p><center><img src='modules/synologyabb/assets/images/abb_ico_256.png'></center></p> -->
                 </div>
             </div>
             
@@ -39,7 +39,7 @@ return;
         <!-- <div class="panel-body" style="display: none;"></div> -->
         <div class="panel-body">
             <center>
-            <img src='modules/synologyactivebackupforbusiness/assets/images/loading.gif'>
+            <img src='modules/synologyabb/assets/images/loading.gif'>
             </center>
         </div>
 
@@ -47,7 +47,7 @@ return;
         <div class="panel-footer" style="display: none;"></div>
         <!-- <div class="panel-footer">
             <center>
-            <img src='modules/synologyactivebackupforbusiness/assets/images/loading.gif' class='img-responsive'>
+            <img src='modules/synologyabb/assets/images/loading.gif' class='img-responsive'>
             </center>
         </div> -->
     </div>

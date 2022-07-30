@@ -4,7 +4,7 @@
     </div>
     <div class="panel-body">
         <center>
-            <img src='modules/synologyactivebackupforbusiness/assets/images/icons-error.png'>
+            <img src='modules/synologyabb/assets/images/icons-error.png'>
         </center>
     </div>
     <div class="panel-footer" style="display: none;"></div>

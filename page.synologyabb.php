@@ -1,6 +1,6 @@
 <?php
     if (!defined('FREEPBX_IS_AUTH')) { die('No direct script access allowed'); }
-    $synoClass = \FreePBX::Synologyactivebackupforbusiness();
+    $synoClass = \FreePBX::Synologyabb();
 ?>
 <h1><?php echo _("Synology Active Backup for Business"); ?></h1>
 <div id="box_loading" class="loader-background">
