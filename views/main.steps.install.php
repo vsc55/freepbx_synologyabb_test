@@ -73,7 +73,7 @@ drwxr-xr-x  22 root root 4096 Jul 22 17:37 3.10.0-1127.19.1.el7.x86_64</b></i><b
 If all this is correct we will check if the symbolic link of "/lib/modules/{version}/build" exists.<br>
 On my system that file did not exist and because of this the kernel module that has to be compiled during the installation process shows the error message.<br>
 We create the symbolic link:<br>
-</i><b># cd /usr/src/kernels/$(uname -r)/<br>
+</i><b># cd /lib/modules/$(uname -r)/<br>
 # ln -s /usr/src/kernels/$(uname -r)/ build</b></i><br>
 <br>
 Once we have created this, we start the installation/update process again.</p>
