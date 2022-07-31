@@ -3,6 +3,41 @@ var timerRefresInterval;
 var timerRefresIntervalRun;
 var lastCheckCode;
 
+const SynologyABB_STATUS = {
+	STATUS_NULL: -1,
+	STATUS_IDLE: 110,
+	STATUS_IDLE_COMPLETED: 120,
+	STATUS_IDLE_CANCEL: 130,
+	STATUS_IDLE_FAILED:140,
+	STATUS_BACKUP_RUN: 300,
+	STATUS_NO_CONNECTION: 400,
+	STATUS_ERR_DEV_REMOVED: 510,
+	STATUS_UNKNOWN: 99990,
+	STATUS_IDLE_UNKNOWN: 99991,
+	STATUS_ERR_UNKNOWN: 99992,
+};
+
+const SynologyABB_ERROR = {
+	ERROR_UNKNOWN: -2,
+	ERROR_NOT_DEFINED: -1,
+	ERROR_ALL_GOOD: 0,
+	ERROR_AGENT_NOT_INSTALLED: 501,
+	ERROR_AGENT_NOT_RETURN_INFO: 502,
+	ERROR_AGENT_ENDED_IN_ERROR: 503,
+	ERROR_AGENT_RETURN_UNCONTROLLED: 504,
+	ERROR_AGENT_ALREADY_CONNECTED: 520,
+	ERROR_AGENT_NOT_ALREADY_CONNECTED: 521,
+	ERROR_AGENT_SERVER_CHECK: 550,
+	ERROR_AGENT_SERVER_AUTH_FAILED: 611,
+	ERROR_AGENT_SERVER_AUTH_FAILED_USER_PASS: 612,
+	ERROR_AGENT_SERVER_AUTH_FAILED_BAN_IP: 613,
+	ERROR_MISSING_ARGS: 650,
+	ERROR_HOOK_FILE_NOT_EXIST: 710,
+	ERROR_HOOK_FILE_EMTRY: 715,
+	ERROR_HOOK_FILE_TOEKN: 720,
+	ERROR_HOOK_RUN_TIMEOUT: 725,
+};
+
 $(document).ready(function()
 {
 	$(window).resize(function() { box_resize(); });
@@ -17,6 +52,24 @@ $(document).ready(function()
     loadStatus();
 });
 
+// Obtain URL parameter in case insensitive
+// Source: https://stackoverflow.com/questions/24395838/how-to-obtain-url-parameter-using-jquery-in-case-insensitive-way
+function urlParam_CI(parm)
+{
+	var str = window.location.href;
+	var rgx = new RegExp('\\b' + parm + '=.*\\b', 'gi');
+
+	//this gets an array of matches
+	var aMatches = str.match(rgx);
+	if (aMatches == null) return;
+	var parmVal = aMatches[0].substring(parm.length + 1);
+
+	//we shouldnt, but make sure there are not trailing parms
+	var idx = parmVal.indexOf('&');
+	//alert('amp:' + idx);
+	if (idx > -1) parmVal = parmVal.substring(0, idx);
+	return parmVal;
+}
 
 function box_resize()
 {
@@ -46,7 +99,7 @@ function loadStatus(e)
 		e.preventDefault();
 	}
 	var post_data = {
-		module	: 'synologyabb',
+		module	: urlParam_CI('display'),
 		command	: 'getagentstatus',
 	};
 	$.post(window.FreePBX.ajaxurl, post_data, function(data) 
@@ -74,7 +127,7 @@ function loadStatus(e)
 				status_code = status.info_status.code;
 			}
 
-			var check_code = error_code !== 0 || typeof status_code === undefined ? "E" + error_code : "S" + status_code;
+			var check_code = error_code !== SynologyABB_ERROR['ERROR_ALL_GOOD'] || typeof status_code === undefined ? "E" + error_code : "S" + status_code;
 
 			if (lastCheckCode !== check_code || status.html.force == true)
 			{
@@ -97,21 +150,31 @@ function loadStatus(e)
 					});
 				}
 
-				if (error_code === 0)
+				if (error_code === SynologyABB_ERROR['ERROR_ALL_GOOD'])
 				{
 					switch (status_code)
 					{
-						case 100: // Idle - Completed
-						case 150: // Idle - Canceled
-						case 400: // No connection found
+						case SynologyABB_STATUS['STATUS_IDLE']:
+						case SynologyABB_STATUS['STATUS_IDLE_COMPLETED']:
+						case SynologyABB_STATUS['STATUS_IDLE_CANCEL']:
+						case SynologyABB_STATUS['STATUS_IDLE_FAILED']:
 							break;
 
-						case 300: // Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
+						case SynologyABB_STATUS['STATUS_NO_CONNECTION']:
+						case SynologyABB_STATUS['STATUS_ERR_DEV_REMOVED']:
+							break;
+
+						case SynologyABB_STATUS['STATUS_BACKUP_RUN']:
 							// When the copy is running the data is read at a shorter interval.
 							tRefresInterval = timerRefresIntervalRun;
+							break;
+
 						default:
-							// const STATUS_UNKNOWN 		= 99990;	//99990 - status desconocido
-							// const STATUS_UNKNOWN_IDEL	= 99991;	//99991 - status Idel desconocido
+							// const STATUS_NULL			= -1;		// No state has been defined.
+							// const STATUS_UNKNOWN 		= 99990;	// 99990 - unknown status
+							// const STATUS_UNKNOWN_IDEL	= 99991;	// 99991 - Idel status unknown
+							// const STATUS_ERR_UNKNOWN		= 99992;	// 99992 - error status unknown
+
 							break;
 					}
 					// $('div.panel-version', box_area).html("<b>Agent Version: " + status.agent_version.full + "</b>");

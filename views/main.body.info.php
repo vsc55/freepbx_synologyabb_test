@@ -2,13 +2,10 @@
     $progress_backup = null;
     if (isset($info['info_status']['progress']))
     {
-        if ($info['info_status']['progress']['total'] != 0)
-        {
-            $progress_backup = array(
-                'progress' => round((100 / $info['info_status']['progress']['total']) * $info['info_status']['progress']['send']),
-                'all'   => $info['info_status']['progress']['all'],
-            );
-        }
+        $progress_backup = array(
+            'progress'  => $info['info_status']['progress']['percentage'],
+            'all'       => $info['info_status']['progress']['all'],
+        );
     }
 
     $ico_status_backup = "status_clock.png";
@@ -20,17 +17,17 @@
     {
         switch($status['code'])
         {
-            case 110: // (Idle) No copy has been made yet.
-            case 130: // (Idle - Canceled)
-            case 140: // (Idel - Failed)
+            case $syno::STATUS_IDLE:
+            case $syno::STATUS_IDLE_CANCEL:
+            case $syno::STATUS_IDLE_FAILED:
                 $ico_status_backup = "status_warn.png";
                 break;
 
-            case 120:// (Idle - Completed)
+            case $syno::STATUS_IDLE_COMPLETED:
                 $ico_status_backup = "status_ok.png";
                 break;
             
-            case 300:// (Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s))
+            case $syno::STATUS_BACKUP_RUN:
                 $ico_status_backup = "status_update.png";
                 break;
         }

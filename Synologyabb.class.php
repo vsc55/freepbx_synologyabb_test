@@ -638,16 +638,26 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 
 					$t_status_info['progressdata'] = preg_split('/[\/]+/', $t_status_info['progress'][0]);
 					$t_status_info['progressdata'] = array_map('trim', $t_status_info['progressdata']);
-					
+
+					$t_status_info['dataparsed'] = array(
+						'send' 		 => \ByteUnits\parse($this->parseUnitConvert($t_status_info['progressdata'][0]))->numberOfBytes(),
+						'total' 	 => \ByteUnits\parse($this->parseUnitConvert($t_status_info['progressdata'][1]))->numberOfBytes(),
+						'percentage' => 0,
+					);
+					if ($t_status_info['dataparsed']['total'] != 0)
+					{
+						$t_status_info['dataparsed']['percentage'] = round((100 / $t_status_info['dataparsed']['total']) * $t_status_info['dataparsed']['send']);		
+					}
 					$t_info['progress'] = array(
 						'all' 	=> $t_status_info_msg,
-						'send' 	=> \ByteUnits\parse($this->parseUnitConvert($t_status_info['progressdata'][0]))->numberOfBytes(),
-						'total' => \ByteUnits\parse($this->parseUnitConvert($t_status_info['progressdata'][1]))->numberOfBytes(),
+						'send' 	=> $t_status_info['dataparsed']['send'],
+						'total' => $t_status_info['dataparsed']['total'],
 						'speed' => $t_status_info['progress'][1],
+						'percentage' => $t_status_info['dataparsed']['percentage'],
 					);
 					break;
 
-				case strtolower("No connection found"):	// No connection found
+				case strtolower("No connection found"):
 					$status_code =  self::STATUS_NO_CONNECTION;
 					break;
 
@@ -711,7 +721,7 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		if ($gen_html) {
 			if (! is_null($t_html['body']))	{ $return['html'] 	= $t_html; }
 		}
-		if ($return_error) 				{ $return['error'] 	= $error_code_array; }
+		if ($return_error) { $return['error'] = $error_code_array; }
 
 		return $return;
 	}
