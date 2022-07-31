@@ -20,9 +20,9 @@
     {
         switch($status['code'])
         {
-            case 110: // (Idle) No se ha echo ninguna copia aun.
-            case 130:// (Idle - Canceled)
-            case 140:// (Idel - Failed)
+            case 110: // (Idle) No copy has been made yet.
+            case 130: // (Idle - Canceled)
+            case 140: // (Idel - Failed)
                 $ico_status_backup = "status_warn.png";
                 break;
 
@@ -30,19 +30,11 @@
                 $ico_status_backup = "status_ok.png";
                 break;
             
-            case 300:// (Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)) Backup en curso
+            case 300:// (Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s))
                 $ico_status_backup = "status_update.png";
                 break;
         }
-    }
-			
-	// const STATUS_NO_CONNECTION 	= 400;		// (No connection found) No conectado con el servidor
-	// const STATUS_ERR_DEV_REMOVED = 510; 	// (Error  - The current device has been removed from the server. Please contact your administrator for further assistance.) Equipo eliminado del servidor.
-
-	// const STATUS_UNKNOWN 		= 99990;	//99990 - status desconocido
-	// const STATUS_IDLE_UNKNOWN	= 99991;	//99991 - status Idel desconocido
-	// const STATUS_ERR_UNKNOWN	= 99992;	//99992 - status Error desconocido
-    
+    }    
 ?>
 
 <div class="panel panel-primary abb-panel-main">

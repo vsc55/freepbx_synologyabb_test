@@ -1,11 +1,9 @@
 #!/usr/bin/env php
 <?php
-    // Hack Hook: /usr/bin/sysadmin_manager
 
     include __DIR__."/hook.parse.args.php";
     $v = new \FreePBX\modules\Synologyabb\ParseArgs($argv, __FILE__);
     $settings = $v->getSettingAll();
-
 
     include_once '/etc/freepbx.conf';
     error_reporting(E_ALL);

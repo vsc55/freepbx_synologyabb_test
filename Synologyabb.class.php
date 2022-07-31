@@ -21,20 +21,20 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		'error' => ''
     );
 
-	const STATUS_NULL			= -1;		// No se ha definido ningun estado.
-	const STATUS_IDLE 			= 110;		// (Idle) No se ha echo ninguna copia aun.
+	const STATUS_NULL			= -1;		// No state has been defined.
+	const STATUS_IDLE 			= 110;		// (Idle) No copy has been made yet.
 	const STATUS_IDLE_COMPLETED = 120;		// (Idle - Completed)
 	const STATUS_IDLE_CANCEL	= 130;		// (Idle - Canceled)
 	const STATUS_IDLE_FAILED	= 140;		// (Idel - Failed)
 	
-	const STATUS_BACKUP_RUN		= 300;		// (Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)) Backup en curso
-	const STATUS_NO_CONNECTION 	= 400;		// (No connection found) No conectado con el servidor
+	const STATUS_BACKUP_RUN		= 300;		// (Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s))
+	const STATUS_NO_CONNECTION 	= 400;		// (No connection found) Not connected to the server
 
 	const STATUS_ERR_DEV_REMOVED = 510; 	// (Error  - The current device has been removed from the server. Please contact your administrator for further assistance.) Equipo eliminado del servidor.
 
-	const STATUS_UNKNOWN 		= 99990;	//99990 - status desconocido
-	const STATUS_IDLE_UNKNOWN	= 99991;	//99991 - status Idel desconocido
-	const STATUS_ERR_UNKNOWN	= 99992;	//99992 - status Error desconocido
+	const STATUS_UNKNOWN 		= 99990;	//99990 - unknown status
+	const STATUS_IDLE_UNKNOWN	= 99991;	//99991 - Idel status unknown
+	const STATUS_ERR_UNKNOWN	= 99992;	//99992 - error status unknown
 
 
 
@@ -268,7 +268,6 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 					}
 					else
 					{
-						// $error_code = self::ERROR_ALL_GOOD;
 						$error_code = ($hook_info['error']['code'] === self::ERROR_ALL_GOOD ? self::ERROR_ALL_GOOD : $hook_info['error']['code']);
 						if (! $decode)
 						{
@@ -369,7 +368,7 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 			case self::STATUS_BACKUP_RUN:
 				$AlertGlyphIcon = $this->genStatusIcon('run', sprintf("%s - %s", $status_msg, $data['info_status']['progress']['all']));
 				break;
-			case self::STATUS_IDLE:				// (Idle) no copy has been made yet.
+			case self::STATUS_IDLE:
 			case self::STATUS_IDLE_CANCEL:
 			case self::STATUS_IDLE_FAILED:
 				$AlertGlyphIcon = $this->genStatusIcon('warning', $status_msg);
@@ -413,7 +412,8 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 	}
 
 
-	public function showPage($page, $params = array()) {
+	public function showPage($page, $params = array())
+	{
 		$page = trim($page);
 		$page_show = '';
 		$data = array(
@@ -544,6 +544,7 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		if ($force == true)	// We force to refresh the status data
 		{
 			$this->setAgentReConnect();
+			usleep(500000);
 		}
 
 		$hook 		= $this->runHookCheck("status", "get-cli-status");
@@ -763,14 +764,6 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		$hook 		 = $this->runHookCheck("createconnection", "set-cli-create-connection", $hook_params);
 		$error_code  = $hook['error'];
 
-		//DEBUG!!!!!!
-		// $return = $hook;
-
-		if ($error_code === self::ERROR_ALL_GOOD)
-		{
-			// $hook_data  = $hook['hook_data']['data'];
-		}
-
 		$return['error'] = $this->getErrorMsgByErrorCode($error_code, true);
 		return $return;
 	}
@@ -779,9 +772,6 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 	{
 		$return = array();
 		$hook 	= $this->runHookCheck("reconnect", "set-cli-reconnect");
-
-		//DEBUG!!!!!!
-		//$return = $hook;
 
 		$return['error'] = $this->getErrorMsgByErrorCode($hook['error'], true);
 		return $return;
@@ -799,17 +789,13 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		$hook 		= $this->runHookCheck("logout", "set-cli-logout", $hook_params);
 		$error_code = $hook['error'];
 
-		//DEBUG!!!!!!
-		//$return = $hook;
-
 		$return['error'] = $this->getErrorMsgByErrorCode($error_code, true);
 		return $return;
 	}
 
 
-
-
-	public function getStatusMsgByCode($status_code, $return_array = false) {
+	public function getStatusMsgByCode($status_code, $return_array = false)
+	{
 		$msg = "";
 		switch($status_code)
 		{
@@ -841,8 +827,6 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 				$msg = _("Device Removed From Server");
 				break;
 
-			
-
 			case self::STATUS_UNKNOWN:
 			case self::STATUS_IDLE_UNKNOWN:
 			case self::STATUS_ERR_UNKNOWN:
@@ -856,7 +840,8 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		return ($return_array ? array( 'code' => $status_code, 'msg' => $msg ) : $msg);
 	}
 
-	public function getErrorMsgByErrorCode($error_code, $return_array = false, $msg_alternative = null) {
+	public function getErrorMsgByErrorCode($error_code, $return_array = false, $msg_alternative = null)
+	{
 		$msg = "";
 		switch($error_code)
 		{
@@ -941,8 +926,8 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 	}
 
 	
-
-	public function checkServer($host, $port = null, $wait = 1) {
+	public function checkServer($host, $port = null, $wait = 1) 
+	{
 		if ( is_null($port) ) { $port = self::DEFAULT_PORT; }
     	$fp = @fsockopen($host, $port, $errCode, $errStr, $wait);
 		if ($fp)

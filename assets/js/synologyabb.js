@@ -63,8 +63,6 @@ function loadStatus(e)
 			}
 
             var status = data.data;
-			
-			// console.log(data.data);
 
 			var box_area = $("#synologyabb-panel");
 			var error_code = status.error.code;
@@ -101,33 +99,24 @@ function loadStatus(e)
 
 				if (error_code === 0)
 				{
-					// const STATUS_COMPLETED 		= 100;		//1 Completed 		(Idle - Completed)
-					// const STATUS_CANCEL			= 150;		//2 Cancel 			(Idle - Canceled)
-					// const STATUS_BACKUP_RUN		= 300;		//3 Backup en curso (Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s))
-					// const STATUS_NO_CONNECTION 	= 400;		//4 No conectado 	(No connection found)
-					// const STATUS_UNKNOWN 		= 99990;	//99990 - status desconocido
-					// const STATUS_UNKNOWN_IDEL	= 99991;	//99991 - status Idel desconocido
-
 					switch (status_code)
 					{
-						case 100:
-						case 150:
-						case 400:
+						case 100: // Idle - Completed
+						case 150: // Idle - Canceled
+						case 400: // No connection found
 							break;
 
-						case 300:
+						case 300: // Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
 							// When the copy is running the data is read at a shorter interval.
 							tRefresInterval = timerRefresIntervalRun;
 						default:
+							// const STATUS_UNKNOWN 		= 99990;	//99990 - status desconocido
+							// const STATUS_UNKNOWN_IDEL	= 99991;	//99991 - status Idel desconocido
 							break;
 					}
-
 					// $('div.panel-version', box_area).html("<b>Agent Version: " + status.agent_version.full + "</b>");
 				}
-
-			
 			}
-
 			lastCheckCode = check_code;
 		}
 		box_resize();
