@@ -8,9 +8,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: \n"
+"Project-Id-Version: Synolgoy Active Backup for Business\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-30 15:05+0200\n"
+"POT-Creation-Date: 2022-07-31 11:13+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -81,15 +81,15 @@ msgstr ""
 msgid "Warning [%s]: %s"
 msgstr ""
 
-#: Synologyabb.class.php:317
+#: Synologyabb.class.php:316
 msgid "Upgrading configs.."
 msgstr ""
 
-#: Synologyabb.class.php:331
+#: Synologyabb.class.php:330
 msgid "Done!"
 msgstr ""
 
-#: Synologyabb.class.php:347
+#: Synologyabb.class.php:346
 msgid "Synology Active Backup"
 msgstr ""
 
@@ -102,112 +102,112 @@ msgstr ""
 msgid "Command not found!"
 msgstr ""
 
-#: Synologyabb.class.php:817
+#: Synologyabb.class.php:803
 msgid "Backup in Progress..."
 msgstr ""
 
-#: Synologyabb.class.php:821
+#: Synologyabb.class.php:807
 msgid "Canceled"
 msgstr ""
 
-#: Synologyabb.class.php:825
+#: Synologyabb.class.php:811
 msgid "Completed"
 msgstr ""
 
-#: Synologyabb.class.php:829
+#: Synologyabb.class.php:815
 msgid "Pending First Copy"
 msgstr ""
 
-#: Synologyabb.class.php:833
+#: Synologyabb.class.php:819
 msgid "Failed"
 msgstr ""
 
-#: Synologyabb.class.php:837
+#: Synologyabb.class.php:823
 msgid "No Connection"
 msgstr ""
 
-#: Synologyabb.class.php:841
+#: Synologyabb.class.php:827
 msgid "Device Removed From Server"
 msgstr ""
 
-#: Synologyabb.class.php:849
+#: Synologyabb.class.php:833
 msgid "Status Unknown"
 msgstr ""
 
-#: Synologyabb.class.php:853
+#: Synologyabb.class.php:837
 #, php-format
 msgid "The status code (%s) is not controlled!"
 msgstr ""
 
-#: Synologyabb.class.php:864
+#: Synologyabb.class.php:849
 msgid "Nothing has been defined yet."
 msgstr ""
 
-#: Synologyabb.class.php:868
+#: Synologyabb.class.php:853
 msgid "No mistake, everything ok."
 msgstr ""
 
-#: Synologyabb.class.php:872
+#: Synologyabb.class.php:857
 msgid "Synology Agent not Installed!"
 msgstr ""
 
-#: Synologyabb.class.php:876
+#: Synologyabb.class.php:861
 msgid "Synology Agent not return info!"
 msgstr ""
 
-#: Synologyabb.class.php:880
+#: Synologyabb.class.php:865
 msgid "Synology Agent ended in error!"
 msgstr ""
 
-#: Synologyabb.class.php:884
+#: Synologyabb.class.php:869
 msgid "Synology Agent returned uncontrolled information!"
 msgstr ""
 
-#: Synologyabb.class.php:888
+#: Synologyabb.class.php:873
 msgid "The server is not available!"
 msgstr ""
 
-#: Synologyabb.class.php:892
+#: Synologyabb.class.php:877
 msgid "Synology Agent Already connected!"
 msgstr ""
 
-#: Synologyabb.class.php:896
+#: Synologyabb.class.php:881
 msgid "Synology Agent Not Already Connected!"
 msgstr ""
 
-#: Synologyabb.class.php:900
+#: Synologyabb.class.php:885
 msgid "The server returned an authentication failed error!"
 msgstr ""
 
-#: Synologyabb.class.php:905
+#: Synologyabb.class.php:890
 msgid "The username or password you entered is incorrect!"
 msgstr ""
 
-#: Synologyabb.class.php:909
+#: Synologyabb.class.php:894
 msgid "This IP address has been blocked because it has reached the maximum number of failed login attempts allowed within a specific time period!"
 msgstr ""
 
-#: Synologyabb.class.php:913
+#: Synologyabb.class.php:898
 msgid "The file that returns the hook information does not exist!"
 msgstr ""
 
-#: Synologyabb.class.php:917
+#: Synologyabb.class.php:902
 msgid "Hook file is empty!"
 msgstr ""
 
-#: Synologyabb.class.php:921
+#: Synologyabb.class.php:906
 msgid "Hook token is invalid!"
 msgstr ""
 
-#: Synologyabb.class.php:925
+#: Synologyabb.class.php:910
 msgid "Hook run exccesd tiemout!"
 msgstr ""
 
-#: Synologyabb.class.php:929
+#: Synologyabb.class.php:914
 msgid "Missing Arguments!"
 msgstr ""
 
-#: Synologyabb.class.php:934
+#: Synologyabb.class.php:919
 #, php-format
 msgid "Unknown error (%s)!"
 msgstr ""
@@ -229,40 +229,40 @@ msgstr ""
 msgid "Error (%s): %s"
 msgstr ""
 
-#: views/main.body.info.php:50
+#: views/main.body.info.php:42
 msgid "Status Backup"
 msgstr ""
 
-#: views/main.body.info.php:60
+#: views/main.body.info.php:52
 msgid "Connection Info:"
 msgstr ""
 
-#: views/main.body.info.php:68
+#: views/main.body.info.php:60
 msgid "Server Address:"
 msgstr ""
 
-#: views/main.body.info.php:80
+#: views/main.body.info.php:72
 msgid "Username:"
 msgstr ""
 
-#: views/main.body.info.php:92 views/main.body.info.php:229
+#: views/main.body.info.php:88 views/main.body.info.php:229
 msgid "Logout from Server"
 msgstr ""
 
-#: views/main.body.info.php:102
+#: views/main.body.info.php:98
 msgid "Portal Recovery"
 msgstr ""
 
-#: views/main.body.info.php:113
+#: views/main.body.info.php:109
 #, php-format
 msgid "Backup Info (%s):"
 msgstr ""
 
-#: views/main.body.info.php:121
+#: views/main.body.info.php:117
 msgid "Last Backup Time:"
 msgstr ""
 
-#: views/main.body.info.php:133
+#: views/main.body.info.php:129
 msgid "Next Backup Time:"
 msgstr ""
 
