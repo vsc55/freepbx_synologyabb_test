@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-31 11:13+0200\n"
-"PO-Revision-Date: 2022-07-31 11:13+0200\n"
+"POT-Creation-Date: 2022-07-31 13:20+0200\n"
+"PO-Revision-Date: 2022-07-31 13:24+0200\n"
 "Last-Translator: Javier Pastor <jpastor@cerebelum.net>\n"
 "Language-Team: \n"
 "Language: es_ES\n"
@@ -58,7 +58,7 @@ msgid "For example:"
 msgstr "Por ejemplo:"
 
 #: Console/Synologyabb.class.php:66 Console/Synologyabb.class.php:79
-#: views/main.body.info.php:203 views/main.body.login.php:30
+#: views/main.body.info.php:200 views/main.body.login.php:30
 #, php-format
 msgid "Agent Version: %s"
 msgstr "Versión del Agente: %s"
@@ -103,88 +103,88 @@ msgstr "Página no Encontrada (%s)!!!!"
 msgid "Command not found!"
 msgstr "¡Comando no encontrado!"
 
-#: Synologyabb.class.php:803
+#: Synologyabb.class.php:813
 msgid "Backup in Progress..."
 msgstr "Copia de Seguridad en Progreso..."
 
-#: Synologyabb.class.php:807
+#: Synologyabb.class.php:817
 msgid "Canceled"
 msgstr "Cancelada"
 
-#: Synologyabb.class.php:811
+#: Synologyabb.class.php:821
 msgid "Completed"
 msgstr "Completada"
 
-#: Synologyabb.class.php:815
+#: Synologyabb.class.php:825
 msgid "Pending First Copy"
 msgstr "Primera Copia Pendiente"
 
-#: Synologyabb.class.php:819
+#: Synologyabb.class.php:829
 msgid "Failed"
 msgstr "Fallida"
 
-#: Synologyabb.class.php:823
+#: Synologyabb.class.php:833
 msgid "No Connection"
 msgstr "Sin Conexión"
 
-#: Synologyabb.class.php:827
+#: Synologyabb.class.php:837
 msgid "Device Removed From Server"
 msgstr "Dispositivo Eliminado del Servidor"
 
-#: Synologyabb.class.php:833
+#: Synologyabb.class.php:843
 msgid "Status Unknown"
 msgstr "Estado Desconocido"
 
-#: Synologyabb.class.php:837
+#: Synologyabb.class.php:847
 #, php-format
 msgid "The status code (%s) is not controlled!"
 msgstr "¡El código de estado (%s) no está controlado!"
 
-#: Synologyabb.class.php:849
+#: Synologyabb.class.php:859
 msgid "Nothing has been defined yet."
 msgstr "Aún no se ha definido nada."
 
-#: Synologyabb.class.php:853
+#: Synologyabb.class.php:863
 msgid "No mistake, everything ok."
 msgstr "No hay error, todo ok."
 
-#: Synologyabb.class.php:857
+#: Synologyabb.class.php:867
 msgid "Synology Agent not Installed!"
 msgstr "¡El Agente Synology no esta instalado!"
 
-#: Synologyabb.class.php:861
+#: Synologyabb.class.php:871
 msgid "Synology Agent not return info!"
 msgstr "¡El Agente Synology no devuelve información!"
 
-#: Synologyabb.class.php:865
+#: Synologyabb.class.php:875
 msgid "Synology Agent ended in error!"
 msgstr "¡El Agente Synology terminó con error!"
 
-#: Synologyabb.class.php:869
+#: Synologyabb.class.php:879
 msgid "Synology Agent returned uncontrolled information!"
 msgstr "¡El Agente Synology devolvió información no controlada!"
 
-#: Synologyabb.class.php:873
+#: Synologyabb.class.php:883
 msgid "The server is not available!"
 msgstr "¡El servidor no está disponible!"
 
-#: Synologyabb.class.php:877
+#: Synologyabb.class.php:887
 msgid "Synology Agent Already connected!"
 msgstr "¡El Agente de Synology ya está conectado!"
 
-#: Synologyabb.class.php:881
+#: Synologyabb.class.php:891
 msgid "Synology Agent Not Already Connected!"
 msgstr "¡El Agente de Synology aún no está conectado!"
 
-#: Synologyabb.class.php:885
+#: Synologyabb.class.php:895
 msgid "The server returned an authentication failed error!"
 msgstr "¡El servidor devolvió un error de autenticación fallida!"
 
-#: Synologyabb.class.php:890
+#: Synologyabb.class.php:900
 msgid "The username or password you entered is incorrect!"
 msgstr "¡El nombre de usuario o la contraseña son incorrectos!"
 
-#: Synologyabb.class.php:894
+#: Synologyabb.class.php:904
 msgid ""
 "This IP address has been blocked because it has reached the maximum number "
 "of failed login attempts allowed within a specific time period!"
@@ -193,27 +193,27 @@ msgstr ""
 "intentos de inicio de sesión fallidos permitidos dentro de un período de "
 "tiempo específico!"
 
-#: Synologyabb.class.php:898
+#: Synologyabb.class.php:908
 msgid "The file that returns the hook information does not exist!"
 msgstr "¡El archivo que devuelve la información del gancho no existe!"
 
-#: Synologyabb.class.php:902
+#: Synologyabb.class.php:912
 msgid "Hook file is empty!"
 msgstr "¡El archivo de gancho está vacío!"
 
-#: Synologyabb.class.php:906
+#: Synologyabb.class.php:916
 msgid "Hook token is invalid!"
 msgstr "¡El token de gancho no es válido!"
 
-#: Synologyabb.class.php:910
+#: Synologyabb.class.php:920
 msgid "Hook run exccesd tiemout!"
 msgstr "¡La ejecución del gancho excedió el tiempo de espera!"
 
-#: Synologyabb.class.php:914
+#: Synologyabb.class.php:924
 msgid "Missing Arguments!"
 msgstr "¡Faltan Argumentos!"
 
-#: Synologyabb.class.php:919
+#: Synologyabb.class.php:929
 #, php-format
 msgid "Unknown error (%s)!"
 msgstr "¡Error desconocido (%s)!"
@@ -239,92 +239,92 @@ msgstr ""
 msgid "Error (%s): %s"
 msgstr "Error (%s): %s"
 
-#: views/main.body.info.php:42
+#: views/main.body.info.php:39
 msgid "Status Backup"
 msgstr "Estado de la Copia de Seguridad"
 
-#: views/main.body.info.php:52
+#: views/main.body.info.php:49
 msgid "Connection Info:"
 msgstr "Información de Conexión:"
 
-#: views/main.body.info.php:60
+#: views/main.body.info.php:57
 msgid "Server Address:"
 msgstr "Dirección del Servidor:"
 
-#: views/main.body.info.php:72
+#: views/main.body.info.php:69
 msgid "Username:"
 msgstr "Nombre de Usuario:"
 
-#: views/main.body.info.php:88 views/main.body.info.php:229
+#: views/main.body.info.php:85 views/main.body.info.php:226
 msgid "Logout from Server"
 msgstr "Desconectar del Servidor"
 
-#: views/main.body.info.php:98
+#: views/main.body.info.php:95
 msgid "Portal Recovery"
 msgstr "Portal de Recuperacion"
 
-#: views/main.body.info.php:109
+#: views/main.body.info.php:106
 #, php-format
 msgid "Backup Info (%s):"
 msgstr "Información de la Copia de Seguridad (%s):"
 
-#: views/main.body.info.php:117
+#: views/main.body.info.php:114
 msgid "Last Backup Time:"
 msgstr "Fecha Ultima Copia:"
 
-#: views/main.body.info.php:129
+#: views/main.body.info.php:126
 msgid "Next Backup Time:"
 msgstr "Fecha Próxima Copia:"
 
-#: views/main.body.info.php:145
+#: views/main.body.info.php:142
 msgid "Force refresh"
 msgstr "Forzar Actualización"
 
-#: views/main.body.info.php:166
+#: views/main.body.info.php:163
 msgid "Service Status:"
 msgstr "Estado del Servicio:"
 
-#: views/main.body.info.php:212
+#: views/main.body.info.php:209
 msgid "Disconnect Device from Server"
 msgstr "Desconectar Dispositivo del Servidor"
 
-#: views/main.body.info.php:219 views/main.body.info.php:220
+#: views/main.body.info.php:216 views/main.body.info.php:217
 #: views/main.body.login.php:17 views/main.body.login.php:18
 msgid "Username"
 msgstr "Nombre de Usuario"
 
-#: views/main.body.info.php:223 views/main.body.info.php:224
+#: views/main.body.info.php:220 views/main.body.info.php:221
 #: views/main.body.login.php:22 views/main.body.login.php:23
 msgid "Password"
 msgstr "Contraseña"
 
-#: views/main.body.info.php:239
+#: views/main.body.info.php:236
 msgid "Are you sure you want to disconnect this device from the backup server?"
 msgstr ""
 "¿Está seguro de que desea desconectar este dispositivo del servidor de copia "
 "de seguridad?"
 
-#: views/main.body.info.php:240
+#: views/main.body.info.php:237
 msgid "YES"
 msgstr "SÍ"
 
-#: views/main.body.info.php:240
+#: views/main.body.info.php:237
 msgid "NO"
 msgstr "NO"
 
-#: views/main.body.info.php:252
+#: views/main.body.info.php:249
 msgid "Started data update process..."
 msgstr "Proceso de actualización de datos iniciado..."
 
-#: views/main.body.info.php:278 views/main.body.login.php:50
+#: views/main.body.info.php:275 views/main.body.login.php:50
 msgid "The Username field cannot be empty!"
 msgstr "¡El campo Nombre de Usuario no puede estar vacío!"
 
-#: views/main.body.info.php:284 views/main.body.login.php:56
+#: views/main.body.info.php:281 views/main.body.login.php:56
 msgid "The Password field cannot be empty!"
 msgstr "¡El campo Contraseña no puede estar vacío!"
 
-#: views/main.body.info.php:308
+#: views/main.body.info.php:305
 msgid "Device Successfully Disconnected!"
 msgstr "¡Dispositivo Desconectado con Éxito!"
 
