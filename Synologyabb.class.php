@@ -566,7 +566,7 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 
 	public function isOSCompatibilityAutoInstall()
 	{
-		return true; //Testing
+		// return true; //Testing
 		// System Updates are only usable on FreePBX Distro style machines
 		$su = new \FreePBX\Builtin\SystemUpdates();
 		return $su->canDoSystemUpdates() ? true : false;
@@ -1088,8 +1088,11 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		curl_setopt($crl, CURLOPT_FOLLOWLOCATION, true);
 	
 		$ret = trim(curl_exec($crl));
-		if (curl_error($crl)) {
-			dbug("Error Curl: " . curl_error($crl));
+		if (curl_error($crl))
+		{
+			$error_curl_msg = sprintf(_("Error Curl: %s"), curl_error($crl));
+			$this->AutoInstallWriteOut($error_curl_msg);
+			// dbug($error_curl_msg);
 		}
 	
 		//if debug is turned on, return the error number if the page fails.
@@ -1116,8 +1119,12 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		$json_file = self::INFO_FILE;
         $json_data = json_encode($data);
         $return_data = @file_put_contents($json_file, $json_data);
-        if (! $return_data) {
-            dbug(error_get_last());
+        if (! $return_data)
+		{
+			$errMsgArr = error_get_last();
+			$errMsg = sprintf(_("Error in process SaveInfo. Error Type [%s] in file [%s:%s], message: %s"), $errMsgArr['type'], $errMsgArr['file'], $errMsgArr['line'], $errMsgArr['message']);
+			$this->AutoInstallWriteOut($errMsg);
+            // dbug($errMsg);
         }
         return $return_data;
     }
