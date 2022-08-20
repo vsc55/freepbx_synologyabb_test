@@ -25,7 +25,7 @@ class ParseArgs
     {
         if (empty($this->args[1]))
         {
-            $msg_err = "Needs a param";
+            $msg_err = _("Needs a param");
             $this->sendSyslog($msg_err);
             throw new \Exception($msg_err);
         }
@@ -39,7 +39,7 @@ class ParseArgs
 
         if (!is_array($this->settings))
         {
-            $msg_err = "Invalid param";
+            $msg_err = _("Invalid param");
             $this->sendSyslog($msg_err);
             throw new \Exception($msg_err);
         }
@@ -62,12 +62,12 @@ class ParseArgs
         {
             if (! array_key_exists($key, $this->settings) )
             {
-                $msg_err = sprintf( "Necessary param [%s] is missing!", $key);
+                $msg_err = sprintf( _("Necessary param [%s] is missing!"), $key);
                 break;
             }
             elseif ( $val == true && empty($this->settings[$key]) )
             {
-                $msg_err = sprintf("Param is empty [%s]", $key);
+                $msg_err = sprintf(_("Param is empty [%s]"), $key);
                 break;
             }
         }

@@ -6,10 +6,22 @@
  * 
  */
 namespace FreePBX\modules;
+// "Symfony\Component\Lock\Factory" is deprecated since Symfony 4.4 and will be removed in 5.0 use "Symfony\Component\Lock\LockFactory" instead
+use Symfony\Component\Lock\Factory;
+use Symfony\Component\Lock\Store\SemaphoreStore;
+
 include __DIR__."/vendor/autoload.php";
 
 class Synologyabb extends \FreePBX_Helpers implements \BMO {
 	
+	private $lock;
+	// See framework/hooks/yum-* commands where these files are defined
+
+	const LOCK_DIR  = "/dev/shm/abbwrapper";
+	const LOCK_FILE = "/dev/shm/abbwrapper/run.lock";
+	const LOGS_FILE = "/dev/shm/abbwrapper/output.log";
+	const INFO_FILE = "/dev/shm/abbwrapper/info.json";
+
 	public static $default_agent_status_data = array(
         'server' => '',
         'user' => '',
@@ -46,6 +58,7 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 	const ERROR_AGENT_NOT_RETURN_INFO 		= 502;
 	const ERROR_AGENT_ENDED_IN_ERROR 		= 503;
 	const ERROR_AGENT_RETURN_UNCONTROLLED 	= 504;
+	const ERROR_AGENT_IS_INSTALLING			= 505;
 
 	const ERROR_AGENT_ALREADY_CONNECTED 	= 520;	// (Already connected)
 	const ERROR_AGENT_NOT_ALREADY_CONNECTED = 521;	// (Not Already connected)
@@ -65,7 +78,7 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 
 	const DEFAULT_PORT = 5510;	// Default port Active Backup for Business Server
 	
-	
+	const SYNOLOGY_URL_ARCHIVE = 'https://archive.synology.com/download/Utility/ActiveBackupBusinessAgent';
 
 	public function __construct($freepbx = null) {
 		if ($freepbx == null) {
@@ -223,23 +236,40 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 
 		$this->runHook($hook_run, $hook_params);
 
-		// We wait 30 seconds to see if the file with the data is created
-		$maxloops = $timeout * 2;
 		$hookTimeOut = true;
+		if ($timeout == null || $timeout < 0)
+		{
+			// We wait 10 seconds to see if the file with the data is created and if the status change to RUN or END
+			$maxloops 		 = 10 * 4; 
+			$sleeploop 		 = 250000;
+			$status_continue = array("RUN", "END");
+		}
+		else
+		{
+			// We wait 30 seconds to see if the file with the data is created and if the status change to END
+			$maxloops 		 = $timeout * 4;
+			$sleeploop 		 = 250000;
+			$status_continue = array("END");
+		}
 		while ($maxloops--)
 		{
 			if (file_exists($file))
 			{
 				$decode_info = $this->readFileHook($file, true);
-
-				if ( !empty($decode_info) && isset($decode_info['hook']['token']) && $hook_token == $decode_info['hook']['token'] && $decode_info['hook']['status'] == "END")
+				if ( !empty($decode_info) && !empty($decode_info['hook']))
 				{
-					$hookTimeOut = false;
-					break;
+					$info_status = isset($decode_info['hook']['status']) ? $decode_info['hook']['status'] : '';
+					$info_hook 	 = isset($decode_info['hook']['token'])  ? $decode_info['hook']['token'] : '';
+					if ( $hook_token == $info_hook && in_array($info_status, $status_continue))
+					{
+						$hookTimeOut = false;
+						break;
+					}
 				}
 			}
-			usleep(500000);
+			usleep($sleeploop);
 		}
+
 		if ($hookTimeOut)
 		{
 			$error_code = self::ERROR_HOOK_RUN_TIMEOUT;
@@ -419,7 +449,7 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		$data = array(
 			"syno" 		=> $this,
 			'request'	=> $_REQUEST,
-			'page'		=> $page
+			'page'		=> $page,
 		);
 		$data = array_merge($data, $params);
 		
@@ -466,10 +496,12 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		switch($req)
 		{
 			case "getagentversion":
+			case "getagentversiononline":
 			case "getagentstatus":
 			case "setagentcreateconnection":
 			case "setagentreconnect":
 			case "setagentlogout":
+			case "runautoinstall":
 				return true;
 				break;
 
@@ -484,6 +516,13 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		$data_return = false;
 		switch ($command)
 		{
+			case 'runautoinstall':
+				$data_return = array("status" => true, "data" => $this->runAutoInstallAgent());
+				break;
+			case 'getagentversiononline':
+				$data_return = array("status" => true, "data" => $this->getAgentVersionOnline(false));
+				break;
+
 			case 'getagentversion':
 				$data_return = array("status" => true, "data" => $this->getAgentVersion(true, false));
 				break;
@@ -525,6 +564,14 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		return ((int) filter_var($data, FILTER_SANITIZE_NUMBER_INT) == 0 ? 0 : $data);
 	}
 
+	public function isOSCompatibilityAutoInstall()
+	{
+		return true; //Testing
+		// System Updates are only usable on FreePBX Distro style machines
+		$su = new \FreePBX\Builtin\SystemUpdates();
+		return $su->canDoSystemUpdates() ? true : false;
+	}
+
 	public function isAgentInstalled() {
 		return file_exists($this->getABBCliPath());
 	}
@@ -552,11 +599,11 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		$return 	= $this->getAgentStatusDefault();
 		$t_html 	= array(
 			'force' => false,
-			'body' => null
+			'body'  => "",
+			'args'  => array(),
 		);
-
 		$error_code_array = null;
-		$status_code = self::STATUS_NULL;
+		$status_code 	  = self::STATUS_NULL;
 
 		if ($error_code === self::ERROR_ALL_GOOD)
 		{
@@ -678,50 +725,61 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 
 			switch (strtolower($t_status_info_type))
 			{
+				case strtolower("Backing up..."):
+					$t_html['force'] = true;
 				case strtolower("Error"):
 				case strtolower("Idle"):
-					$t_html = array(
-						'force' => false,
-						'body' 	=> $this->showPage("main.body.info", array( 'info' => $hook_data, 'status' => $status_code, 'status_type' => strtolower($t_status_info_type) )),
-					);
-					break;
-				case strtolower("Backing up..."):
-					$t_html = array(
-						'force' => true,
-						'body' 	=> $this->showPage("main.body.info", array( 'info' => $hook_data, 'status' => $status_code, 'status_type' => strtolower($t_status_info_type) )),
+					$t_html['body']  = "main.body.info";
+					$t_html['args']  = array(
+						'info' 		  => $hook_data,
+						'status' 	  => $status_code,
+						'status_type' => strtolower($t_status_info_type)
 					);
 					break;
 
 				case strtolower("No connection found"):
-					$t_html = array(
-						'force' => false,
-						'body' => $this->showPage("main.body.login"),
-					);
+					$t_html['body'] = "main.body.login";
 					break;
 
 				default:
-					$t_html = array(
-						'force' => false,
-						'body' 	=> $this->showPage("main.body.error", array( 'error_info' => $status_code )),
-					);
+					$t_html['body'] = "main.body.error";
 			}
 
 			$return = $hook_data;
 		}
-
-		$error_code_array = $this->getErrorMsgByErrorCode($error_code, true);
-		if ($error_code != self::ERROR_ALL_GOOD)
+		elseif ($error_code === self::ERROR_AGENT_NOT_INSTALLED || $error_code === self::ERROR_AGENT_IS_INSTALLING)
 		{
-			$t_html = array(
-				'force' => false,
-				'body' 	=> $this->showPage("main.body.error", array( 'error_info' => $error_code_array )),
+			$t_html['body'] = "main.steps.install";
+			$t_html['args'] = array(
+				'runing_installation' => $error_code === self::ERROR_AGENT_IS_INSTALLING ? true : false,
+				'allow_auto_install'  => $this->isOSCompatibilityAutoInstall(),
 			);
 		}
-
-		if ($gen_html) {
-			if (! is_null($t_html['body']))	{ $return['html'] 	= $t_html; }
+		else
+		{
+			$t_html['body'] = "main.body.error";
 		}
-		if ($return_error) { $return['error'] = $error_code_array; }
+
+		$error_code_array = $this->getErrorMsgByErrorCode($error_code, true);
+		if ($gen_html)
+		{
+			if (! empty($t_html['body']))
+			{
+				$t_html['args_default'] = array(
+					'error_code'  => $error_code,
+					'error_info'  => $error_code_array,
+					'status_info' => $status_code,
+				);
+				$return['html'] = array(
+					'force' => $t_html['force'],
+					'body' 	=> $this->showPage($t_html['body'], array_merge($t_html['args_default'], $t_html['args'])),
+				);
+			}
+		}
+		if ($return_error)
+		{
+			$return['error'] = $error_code_array;
+		}
 
 		return $return;
 	}
@@ -784,6 +842,28 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		$hook 	= $this->runHookCheck("reconnect", "set-cli-reconnect");
 
 		$return['error'] = $this->getErrorMsgByErrorCode($hook['error'], true);
+		return $return;
+	}
+
+	public function runAutoInstallAgent($readonly = false)
+	{
+		$return = array();
+		$hook_params = array(
+			"readonly" 	=> $readonly,
+		);
+		$hook 		= $this->runHookCheck("autoinstall", "run-install-agent", $hook_params, true, "-1");
+		$error_code = $hook['error'];
+
+		if ($error_code === self::ERROR_ALL_GOOD)
+		{
+			$return['info'] = $hook['hook_data']['data'];
+		}
+		else
+		{
+			$return['info'] = $this->AutoInstallReadInfo();
+			$return['info']['out'] = $this->AutoInstallReadOut();
+		}
+		$return['error'] = $this->getErrorMsgByErrorCode($error_code, true);
 		return $return;
 	}
 
@@ -878,8 +958,12 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 			case self::ERROR_AGENT_RETURN_UNCONTROLLED: //504
 				$msg = _("Synology Agent returned uncontrolled information!");
 				break;
+			
+			case self::ERROR_AGENT_IS_INSTALLING: //505
+				$msg = _("Synology Agent Is Installing...");
+				break;
 
-			case self::ERROR_AGENT_SERVER_CHECK: //505
+			case self::ERROR_AGENT_SERVER_CHECK: //5501
 				$msg = _("The server is not available!");
 				break;
 
@@ -950,6 +1034,229 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 			$return_date = array('code' => $errCode, 'msg' => $errStr);
 		}
 		return $return_date;
+	}
+
+
+	public function getAgentVersionOnline($order_ascending = false, $only_last_version = false)
+	{
+		$url = self::SYNOLOGY_URL_ARCHIVE;
+
+		$regexp = '#<a href="/download/Utility/ActiveBackupBusinessAgent/(.+?)" rel="noreferrer noopener">#s';
+		// <a href="/download/Utility/ActiveBackupBusinessAgent/2.4.1-2321" rel="noreferrer noopener">2.4.1-2321</a>
+ 
+		$html = $this->get_url_contents($url);
+		preg_match_all($regexp, $html, $match);
+		$match = $match[1];
+
+		$ver = array();
+		foreach ($match as $k => $v)
+		{
+			$url = sprintf('https://global.download.synology.com/download/Utility/ActiveBackupBusinessAgent/%1$s/Linux/x86_64/Synology Active Backup for Business Agent-%1$s-x64-rpm.zip', $v);
+			$ver[$v] = $url;
+		}
+
+		if ($only_last_version)
+		{
+			krsort($ver);
+			$return = empty($ver) ? array() : array_slice($ver, 0, 1);;
+		}
+		else
+		{
+			if ($order_ascending) { ksort($ver); }
+			else 				  { krsort($ver); }
+			$return = $ver;
+		}
+		return $return;
+	}
+
+	private function get_url_contents($url)
+	{
+		$crl = curl_init();
+		
+		//				   Mozilla/5.0 (Linux x86_64; rv:103.0) Gecko/20100101 Firefox/103.0
+		//				   Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:103.0) Gecko/20100101 Firefox/103.0
+		//                 Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.2.6) Gecko/20100625 Firefox/3.6.6 ( .NET CLR 3.5.30729)
+		$curl_useragent = "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.1) Gecko/20061204 Firefox/2.0.0.1";
+		$curl_timeout = '3.5';
+		
+		curl_setopt($crl, CURLOPT_USERAGENT, $curl_useragent);
+		curl_setopt($crl, CURLOPT_URL, $url);
+		curl_setopt($crl, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($crl, CURLOPT_CONNECTTIMEOUT, $curl_timeout);
+		curl_setopt($crl, CURLOPT_FAILONERROR, true);
+		curl_setopt($crl, CURLOPT_TIMEOUT, $curl_timeout);
+		curl_setopt($crl, CURLOPT_FOLLOWLOCATION, true);
+	
+		$ret = trim(curl_exec($crl));
+		if (curl_error($crl)) {
+			dbug("Error Curl: " . curl_error($crl));
+		}
+	
+		//if debug is turned on, return the error number if the page fails.
+		if ($ret === false) {
+			$ret = '';
+		}
+		//something in curl is causing a return of "1" if the page being called is valid, but completely empty.
+		//to get rid of this, I'm doing a nasty hack of just killing results of "1".
+		if ($ret == '1') {
+			$ret = '';
+		}
+		curl_close($crl);
+		
+		return $ret;
+	}
+
+
+
+	
+
+	
+	public function AutoInstallSaveInfo($data)
+    {
+		$json_file = self::INFO_FILE;
+        $json_data = json_encode($data);
+        $return_data = @file_put_contents($json_file, $json_data);
+        if (! $return_data) {
+            dbug(error_get_last());
+        }
+        return $return_data;
+    }
+
+    public function AutoInstallReadInfo()
+    {
+		$json_file = self::INFO_FILE;
+        return json_decode(file_get_contents($json_file), true);
+    }
+
+	public function AutoInstallDelInfo()
+	{
+		$json_file = self::INFO_FILE;
+		$data_retur = true;	
+		if (file_exists($json_file))
+		{
+			if (! unlink($json_file) )
+			{
+				$data_retur = false;
+			}
+		}
+		return $data_retur;
+	}
+
+	public function AutoInstallWriteOut($data, $newline = true, $append = true)
+    {
+		$file_log = self::LOGS_FILE;
+        if ($newline)
+        {
+            $data = trim($data) . PHP_EOL;
+        }
+		$flag = 0;
+		if ($append) {
+			$flag = FILE_APPEND;
+		}
+        $write_ok = @file_put_contents($file_log, $data, $flag);
+        if (! $write_ok) {
+            dbug(error_get_last());
+        }
+    }
+	public function AutoInstallReadOut($only_msg = false)
+	{
+		$file_log = self::LOGS_FILE;
+		$lines = file($file_log, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+		if ($only_msg)
+		{
+			$return_data = $lines;
+		}
+		else
+		{
+			$return_data = array_map(function($value, $i)
+			{
+				return(array(
+					"line" => $i,
+					"msg" => $value
+				));
+			}, $lines, range(1, count($lines)));
+		}
+		return $return_data;
+	}
+
+	public function AutoInstallSetStatus($new_status, &$info)
+	{
+		$info['status'] = $new_status;
+        $this->AutoInstallSaveInfo($info);
+	}
+
+	public function isAutoInstallRunning()
+	{
+		return file_exists(self::LOCK_FILE);
+	}
+
+	public function AutoInstallCreateLockDir()
+	{
+		$data_return = true;
+		$lock_dir  = self::LOCK_DIR;
+		if (! file_exists($lock_dir) && ! mkdir($lock_dir))
+        {
+			$data_return = false;
+        }
+		return $data_return;
+	}
+
+	public function AutoInstallLock()
+	{
+		$file_lock  = self::LOCK_FILE;
+		return touch($file_lock);
+	}
+
+	public function AutoInstallUnlock()
+	{
+		$file_lock  = self::LOCK_FILE;
+		$data_retur = true;
+		
+		if (file_exists($file_lock))
+		{
+			if (! unlink($file_lock) )
+			{
+				$data_retur = false;
+			}
+		}
+		return $data_retur;
+	}
+
+	public function AutoInstallDelOutLog()
+	{
+		$file_log  = self::LOGS_FILE;
+		$data_retur = true;
+		
+		if (file_exists($file_log))
+		{
+			if (! unlink($file_log) )
+			{
+				$data_retur = false;
+			}
+		}
+		return $data_retur;
+	}
+
+	public function AutoInstallDelDirTemp($dir, &$exception)
+	{
+		$return_data = true;
+		if (! empty($dir) && file_exists($dir) && is_dir($dir))
+		{
+			$fsObject = new \Symfony\Component\Filesystem\Filesystem();
+			try
+			{
+				$fsObject->remove($dir);
+			}
+			catch (\Symfony\Component\Filesystem\Exception\IOExceptionInterface $exception)
+			{
+				$return_data = false;
+			}
+		}
+		else
+		{
+			$return_data = false;
+		}
+		return $return_data;
 	}
 
 }
