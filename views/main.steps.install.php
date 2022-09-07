@@ -95,6 +95,7 @@
             var box_output      = $('.autoinstall_output', box_area);
             var list_output     = $('ul', box_output);
 
+            $("#btn_install_now").hide();
             box_footer.find("button").attr("disabled", true);
             box_progress.show();
             box_output.show();
@@ -294,6 +295,7 @@
 
                 if (! system_allow_auto_install) {
                     label_text += '<p><?php echo _('The system does not support automatic installation!'); ?></p>';
+                    $("#btn_install_now").hide();
                 }
                 else
                 {
@@ -301,8 +303,6 @@
                 }
                 label_text += '<p><?php echo _('Latest version detected:') ?> <a href="' + last_url + '" target="_blank">' + last_ver + '</a></p>';
                 box_seach_label.html(label_text);
-
-                box_footer.find("button").attr("disabled", false);
             }
             boxLoading(false);
             timerRefresInfo = setTimeout(loadStatus, tRefresInterval);
