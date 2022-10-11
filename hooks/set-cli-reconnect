@@ -1,0 +1,91 @@
+#!/usr/bin/env php
+<?php
+
+    include __DIR__."/hook.parse.args.php";
+    $v = new \FreePBX\modules\Synologyabb\ParseArgs($argv, __FILE__);
+    $settings = $v->getSettingAll();
+
+    include_once '/etc/freepbx.conf';
+    error_reporting(E_ALL);
+    $syno = \FreePBX::Synologyabb();
+    
+    $error_code             = $syno::ERROR_NOT_DEFINED;
+    $error_msg_alternative  = null;
+
+    $data_return = array(
+        'error' => array(),
+        'exec'  => array(),
+        'data' => array(),
+        'hook'  => array(
+            'token' => $settings['hook_token'],
+            'file'  => $settings['hook_file'],
+            'status'=> 'RUN',
+        ),
+    );
+    
+    $file = $syno->getHookFilename($settings['hook_file'], $settings['hook_token']);
+    if (file_exists($file))
+    {
+        $msg_err = _("Hook is already running, process aborting.");
+        $v->sendSyslog($msg_err);
+        throw new \Exception($msg_err);
+    }
+    $syno->writeFileHook($file, $data_return);
+
+    if (! $syno->isAgentInstalled())
+    {
+        $error_code = $syno::ERROR_AGENT_NOT_INSTALLED;
+    }
+    else
+    {
+        $cmd = sprintf("%s -r -q 2>&1", $syno->getABBCliPath());
+        exec($cmd, $out, $ret);
+        $data_return['exec'] = array('cmd' => $cmd, 'ret' => $ret, 'out' => $out);
+
+        if (! is_array($out))
+        {
+            $error_code = $syno::ERROR_AGENT_NOT_RETURN_INFO;
+        }
+        elseif($ret !== 0)
+        {
+            $outfix = (is_array($out) ? $out : array());
+            $outfix = array_map('strtolower', $outfix);
+            $outfix = array_map('trim', $outfix);
+
+            if ($ret === 1 && in_array(strtolower("Incorrect command syntax"), $outfix))
+            {
+                $error_code =$syno::ERROR_AGENT_NOT_ALREADY_CONNECTED;
+            }
+            else
+            {
+                $error_code = $syno::ERROR_AGENT_ENDED_IN_ERROR;
+            }            
+        }
+        else
+        {
+            if(count($out) == 0)
+            {
+                $error_code = $syno::ERROR_ALL_GOOD;
+            }
+            else
+            {
+                $error_code = $syno::ERROR_AGENT_RETURN_UNCONTROLLED;
+            }
+        }
+    }
+
+    $data_return['data']['register'] = ($error_code === $syno::ERROR_ALL_GOOD ? true : false);
+    $data_return['error'] = $syno->getErrorMsgByErrorCode($error_code, true, $error_msg_alternative);
+    $data_return['hook']['status'] = 'END';
+
+    if ($error_code !== $syno::ERROR_ALL_GOOD)
+    {
+        $syno->logger->error( sprintf("%s - Code (%s): %s", __FILE__, $error_code, $data_return['error']['msg']) ) ;
+    }
+
+    $syno->writeFileHook($file, $data_return);
+
+    // dbug($data_return);
+
+    exit();
+?>

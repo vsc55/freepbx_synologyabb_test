@@ -1,0 +1,138 @@
+#!/usr/bin/env php
+<?php
+
+    include __DIR__."/hook.parse.args.php";
+    $v = new \FreePBX\modules\Synologyabb\ParseArgs($argv, __FILE__);
+    $settings = $v->getSettingAll();
+
+    include_once '/etc/freepbx.conf';
+    error_reporting(E_ALL);
+    $syno = \FreePBX::Synologyabb();
+
+    $error_code  = $syno::ERROR_NOT_DEFINED;
+    $data_return = array(
+        'error' => array(),
+        'exec'  => array(),
+        'data' => $syno->getAgentStatusDefault(),
+        'hook'  => array(
+            'token' => $settings['hook_token'],
+            'file'  => $settings['hook_file'],
+            'status'=> 'RUN',
+        ),
+    );
+
+    $file = $syno->getHookFilename($settings['hook_file'], $settings['hook_token']);
+    if (file_exists($file))
+    {
+		$msg_err = _("Hook is already running, process aborting.");
+        $v->sendSyslog($msg_err);
+        throw new \Exception($msg_err);
+    }
+    $syno->writeFileHook($file, $data_return);
+
+    if (! $syno->isAgentInstalled())
+    {
+        if ($syno->isAutoInstallRunning())
+        {
+            $error_code = $syno::ERROR_AGENT_IS_INSTALLING;
+        }
+        else
+        {
+            $error_code = $syno::ERROR_AGENT_NOT_INSTALLED;
+        }
+    }
+    else
+    {
+        $cmd = $syno->getABBCliPath() . " -s 2>&1";
+        exec($cmd, $out, $ret);
+
+        $data_return['exec'] = array('cmd' => $cmd, 'ret' => $ret, 'out' => $out);
+
+        if (! is_array($out))
+        {
+            $error_code = $syno::ERROR_AGENT_NOT_RETURN_INFO;
+        }
+        elseif (! in_array($ret, array(0, 5), true))
+        {
+            $error_code = $syno::ERROR_AGENT_ENDED_IN_ERROR;
+        }
+        else
+        {
+            foreach($out as $line)
+            {
+                if (empty($line)) { continue; }
+                
+                if ( $line == 'No connection found' )
+                {
+                    $data_return['data']['server_status'] = $line;
+                    continue;
+                }
+
+                if (strpos($line, 'Service Status:') !== false)
+                {
+                    $data_return['data']['server_status'] = trim(explode(":", $line, 2)[1]);
+                    continue;
+                }
+
+                if (strpos($line, 'Restore portal:') !== false)
+                {
+                    $new_value = trim(explode(":", $line, 2)[1]);
+                    if ( $new_value != "-")
+                    {
+                        $data_return['data']['portal'] = $new_value;
+                    }
+                    unset($new_value);
+                    continue;
+                }
+
+                if (strpos($line, 'Server address:') !== false)
+                {
+                    $data_return['data']['server'] = substr($line, 0, strpos($line, 'Username:'));
+                    $data_return['data']['server'] = trim(explode("Server address:", $data_return['data']['server'], 2)[1]);
+                }        
+
+                if (strpos($line, 'Username:') !== false)
+                {
+                    $data_return['data']['user'] = trim(explode("Username:", $line, 2)[1]);
+                }
+
+                if (strpos($line, 'Last backup time:') !== false)
+                {
+                    $new_value = substr($line, 0, strpos($line, 'Next backup time:'));
+                    $new_value = trim(explode("Last backup time:", $new_value, 2)[1]);
+                    if ( $new_value != "-")
+                    {
+                        $data_return['data']['lastbackup'] = $new_value;
+                    }
+                    unset($new_value);
+                }
+
+                if (strpos($line, 'Next backup time:') !== false)
+                {
+                    $new_value = trim(explode("Next backup time:", $line, 2)[1]);
+                    if ( $new_value != "-")
+                    {
+                        $data_return['data']['nextbackup'] = $new_value;
+                    }
+                    unset($new_value);
+                }
+            }
+
+            $error_code = $syno::ERROR_ALL_GOOD;
+        }
+    }
+
+    $data_return['error'] = $syno->getErrorMsgByErrorCode($error_code, true);
+    $data_return['hook']['status'] = 'END';
+
+    if ($error_code !== $syno::ERROR_ALL_GOOD)
+    {
+        $syno->logger->error( sprintf("%s - Code (%s): %s", __FILE__, $error_code, $data_return['error']['msg']) ) ;
+    }
+
+    $syno->writeFileHook($file, $data_return);
+
+    // dbug($data_return);
+
+    exit();
+?>

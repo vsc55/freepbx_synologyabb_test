@@ -1,0 +1,122 @@
+**************************************************************
+** The connection to the server has not been configured yet **
+**************************************************************
+
+# abb-cli -s
+No connection found
+
+# abb-cli -l
+No connection found
+
+# abb-cli -r
+Failed to access connection config file
+
+**************************************************************
+**************************************************************
+
+
+
+
+
+***********************************************
+** When we are already connected to a server **
+***********************************************
+
+@@@ JUST CONNECTED NO COPY YET @@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+# abb-cli -s
+Server address: IP SERVER                        Username: UserName
+Last backup time:  -                             Next backup time: 2021-08-20 01:00
+Service Status: Idle
+
+Restore portal: https://ipserver/?launchApp=SYNO.SDS.ActiveBackupPortal.Application&launchParam=device_id%fasdf
+
+For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
+Retrieved service status successfully
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+@@@ LAST COPY CANCELED @@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+# /usr/bin/abb-cli -s
+Server address: IP SERVER                        Username: UserName
+Last backup time: 2021-08-18 03:00               Next backup time: 2021-08-19 03:00
+Service Status: Idle - Canceled
+
+Restore portal: https://ipserver/?launchApp=SYNO.SDS.ActiveBackupPortal.Application&launchParam=device_id%fasdf
+
+For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
+Retrieved service status successfully
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+@@@ LAST COPY OK @@@
+@@@@@@@@@@@@@@@@@@@@
+
+# /usr/bin/abb-cli -s
+Server address: IP SERVER                        Username: UserName
+Last backup time: 2021-08-18 03:00               Next backup time: 2021-08-19 03:00
+Service Status: Idle - Completed
+
+Restore portal: https://ipserver/?launchApp=SYNO.SDS.ActiveBackupPortal.Application&launchParam=device_id%fasdf
+
+For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
+Retrieved service status successfully
+
+@@@@@@@@@@@@@@@@@@@@
+
+
+@@@ BACKUP IN PROGRESS..... @@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+# /usr/bin/abb-cli -s
+Server address: IP SERVER                        Username: UserName
+Last backup time: 2021-08-18 14:26               Next backup time:  -
+Service Status: Backing up... - 8.31 MB / 9.57 MB (576.00 KB/s)
+
+Restore portal: https://ipserver/?launchApp=SYNO.SDS.ActiveBackupPortal.Application&launchParam=device_id%fasdf
+
+For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
+Retrieved service status successfully
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+@@@ THE AGENT HAS BEEN DELETED FROM THE SERVER @@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+# abb-cli -s
+Server address: IP SERVER                        Username: UserName
+Last backup time:  -                             Next backup time:  -
+Service Status: Idle
+
+Restore portal:  -
+
+For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
+Retrieved service status successfully
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+@@@ THE DEVICE HAS BEEN DELETED ON THE SERVER @@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+# abb-cli -s
+Server address: IP SERVER                        Username: UserName
+Last backup time:  -                             Next backup time:  -
+Service Status: Error  - The current device has been removed from the server. Please contact your administrator for further assistance.
+
+Restore portal:  -
+
+For detailed activity logs, please refer to the system logs. Depending on the operating system of your Linux device, you can find the logs in var/log/message, var/log/syslog, or by entering the command journalctl.
+Retrieved service status successfully
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+***********************************************
+***********************************************
