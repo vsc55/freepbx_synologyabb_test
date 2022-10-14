@@ -15,13 +15,15 @@
     <menuitems>
         <synologyabb>Synology Active Backup for Business</synologyabb>
     </menuitems>
-    <supported>16.0</supported>
+    <supported>
+    	<version>16.0</version>
+    </supported>
     <console>
-		<command>
-			<name>synologyabb</name>
-            <class>Synologyabb</class>
-		</command>
-	</console>
+	 <command>
+		<name>synologyabb</name>
+        	<class>Synologyabb</class>
+	</command>
+    </console>
     <hooks>
 		<dashboard class="Overview" namespace="FreePBX\modules\Dashboard\Sections">
 			<method callingMethod="getSummary" class="Synologyabb" namespace="FreePBX\modules">dashboardService</method>
