@@ -24,9 +24,9 @@
                             <ul class="list-group">
                             </ul>
                         </div>
-                        <div class="progress">
+                        <!-- <div class="progress">
                             <div class="progress-bar progress-bar-info progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"></div>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
                 <div class='col-sm-2'></div>
@@ -42,6 +42,8 @@
     var system_allow_auto_install = <?php echo ($allow_auto_install ? "true" : "false"); ?>;
     var timerRefresInfoAutoInstall;
     var AutoScrollListOutput = true;
+    var downloadAttempts = 3;
+    var downloadRetries = 0;
 
     $(document).ready(function()
     {
@@ -72,7 +74,7 @@
         });
 
         <?php if($runing_installation): ?>
-        runInstallNow();
+        runInstallNowStatus();
         <?php else: ?>
         seachAgentVersionOnline();
         <?php endif; ?>
@@ -105,12 +107,14 @@
 
             var label_text  = '<?php echo _("Please wait..."); ?>';
             box_seach_label.html(label_text);
-            runInstallNowStatus();
+            runInstallNowStatus(true);
         }
     }
 
-    function runInstallNowStatus()
+    function runInstallNowStatus(runInstall)
     {
+        runInstall = typeof runInstall !== 'undefined' ? runInstall : false;
+
         timerStop();
         timerStopAutoInstall();
         var box_area        = $("#box-install-synologyabb");
@@ -120,9 +124,11 @@
         var box_output      = $('.autoinstall_output', box_area);
         var list_output     = $('ul', box_output);
 
+        var cmdPost = runInstall === true  ? 'runautoinstall' : 'runautoinstallstatus';
+
         var post_data = {
             module	: urlParam_CI('display'),
-            command	: 'runautoinstall',
+            command	: cmdPost,
         };
         $.post(window.FreePBX.ajaxurl, post_data, function(data)
         {
@@ -135,20 +141,48 @@
             {
                 var info = data.data.info;
                 var out = data.data.info.out;
+                var infoDownload = data.data.info.download;
 
                 var status_code = info.status;
                 var reload_page = false;
+                var stop_loop = false;
+                var skip_process = false;
                 var label_text  = "";
+                var progress_now = "";
+                if (typeof infoDownload !== "undefined")
+                {
+                    if ((infoDownload.downloaded != "") && (infoDownload.download_size != ""))
+                    {
+                        progress_now = Math.round(infoDownload.downloaded / infoDownload.download_size * 100);
+                    }
+                }
 
                 switch (status_code)
                 {
                     case "":
                     case "INIT":
                         label_text += '<?php echo _("Starting Installation..."); ?>';
+                        downloadRetries = 0;
                         break;
                         
                     case "DOWNLOADING":
-                        label_text += '<?php echo _("Downloading..."); ?>';
+                        if (downloadRetries == 0) {
+                            label_text += '<?php echo _("Downloading..."); ?>';
+                        } else {
+                            label_text += sprintf('<?php echo _("Downloading (Retry %s)..."); ?>', downloadRetries); ;
+                        }
+                        break;
+                    
+                    case "DOWNLOADERR":
+                        label_text += '<?php echo _("Download Failed!"); ?>';
+                        if (downloadRetries < downloadAttempts)
+                        {
+                            downloadRetries = downloadRetries + 1;
+                        }
+                        else
+                        {
+                            reload_page = true;
+                        }
                         break;
 
                     case "DOWNLOADOK":
@@ -169,80 +203,102 @@
 
                     case "ENDOK":
                         label_text += '<?php echo _("Installation Completed Successfully"); ?>';
-                        reload_page = true;
                         break;
 
                     case "ENDERROR":
+                        label_text += '<?php echo _("Process Terminated By Error!"); ?>';
+                        reload_page = true;
+                        break;
+
+                    case "undefined":
+                        skip_process = true;
+                        break;
+
                     case "END":
+                        reload_page = true;
+
                     default:
                         label_text += info.status;
                         break;
                 }
 
-                // Update List Output
-                let numNewItems = 0;
-                out.forEach(function(line)
+                if (skip_process == false)
                 {
-                    let nLine = line.line;
-                    let sMsg  = line.msg;
-                    let isExisteItem = $('.output_line_'+nLine, list_output).length;
-                    if (isExisteItem == 0)
+                    // Update List Output
+                    let numNewItems = 0;
+                    out.forEach(function(line)
                     {
-                        let str_danger   = ['error', 'fatal'];
-                        let str_success  = ['done', 'ok!', 'ok.', 'all good.'];
-                        let set_type_msg = false;
-
-                        numNewItems ++;
-                        let css_custom = " output_line_" + nLine;
-                        
-
-                        if (sMsg.toLowerCase().indexOf('kernel headers for this kernel does not seem to be installed.') !== -1)
+                        let nLine = line.line;
+                        let sMsg  = line.msg;
+                        let isExisteItem = $('.output_line_'+nLine, list_output).length;
+                        if (isExisteItem == 0)
                         {
-                            set_type_msg = true;
-                            css_custom += " list-group-item-danger";
-                            sMsg += '<br><b><?php echo _('Review the FAQ section of the manual installation process for more information on how to fix this problem.'); ?></b>'
-                        }
-                        if (! set_type_msg)
-                        {
-                            $.each( str_danger, function( i, val )
+                            let str_danger   = ['error', 'fatal'];
+                            let str_success  = ['done', 'ok!', 'ok.', 'all good.'];
+                            let set_type_msg = false;
+
+                            numNewItems ++;
+                            let css_custom = " output_line_" + nLine;
+                            
+                            if ( sMsg != null )
                             {
-                                if (sMsg.toLowerCase().indexOf(val) !== -1)
+                                if (sMsg.toLowerCase().indexOf('kernel headers for this kernel does not seem to be installed.') !== -1)
                                 {
                                     set_type_msg = true;
                                     css_custom += " list-group-item-danger";
-                                    return false;
+                                    sMsg += '<br><b><?php echo _('Review the FAQ section of the manual installation process for more information on how to fix this problem.'); ?></b>'
                                 }
-                            });
-                        }
-                        if (! set_type_msg)
-                        {
-                            $.each( str_success, function( i, val )
-                            {
-                                if (sMsg.toLowerCase().indexOf(val) !== -1)
+                                if (! set_type_msg)
                                 {
-                                    set_type_msg = true;
-                                    css_custom += " list-group-item-success";
-                                    return false;
+                                    $.each( str_danger, function( i, val )
+                                    {
+                                        if (sMsg.toLowerCase().indexOf(val) !== -1)
+                                        {
+                                            set_type_msg = true;
+                                            css_custom += " list-group-item-danger";
+                                            return false;
+                                        }
+                                    });
                                 }
-                            });
+                                if (! set_type_msg)
+                                {
+                                    $.each( str_success, function( i, val )
+                                    {
+                                        if (sMsg.toLowerCase().indexOf(val) !== -1)
+                                        {
+                                            set_type_msg = true;
+                                            css_custom += " list-group-item-success";
+                                            return false;
+                                        }
+                                    });
+                                }
+                                if (sMsg != "")
+                                {
+                                    list_output.append('<li class="list-group-item'+ css_custom +'">' + sMsg + '</li>');
+                                }
+                            }
                         }
-                        list_output.append('<li class="list-group-item'+ css_custom +'">' + sMsg + '</li>');
-                    }
-                });
+                    });
+                    updateProgressDownload(progress_now);
 
-                // AutoScroll
-                if (numNewItems > 0)
-                {
-                    if (AutoScrollListOutput)
+                    // AutoScroll
+                    if (numNewItems > 0)
                     {
-                        let scrollPosition = list_output.prop("scrollHeight");
-                        list_output.scrollTop(scrollPosition);
+                        if (AutoScrollListOutput)
+                        {
+                            let scrollPosition = list_output.prop("scrollHeight");
+                            list_output.scrollTop(scrollPosition);
+                        }
                     }
                 }
 
                 box_seach_label.html(label_text);
                 if (reload_page) {
-                    location.reload();
+                    timerRefresInfoAutoInstall = setTimeout(function() { location.reload() }, 1000);
+                }
+                else if (stop_loop)
+                {
+
                 }
                 else
                 {
@@ -251,6 +307,24 @@
             }
         });
 
+    }
+
+    function updateProgressDownload(percentage)
+    {
+        if (percentage != "")
+        {
+            if(percentage > 100)
+            {
+                percentage = 100;
+            }
+
+            var bar = $('#progressBarDownload');
+            if ( bar.length > 0 )
+            {
+                bar.css('width', percentage+'%');
+                bar.html(percentage+'%');
+            }
+        }
     }
 
     function timerStopAutoInstall()

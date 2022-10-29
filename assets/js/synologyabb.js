@@ -46,6 +46,11 @@ $(document).ready(function()
 	// Mitigation of "offset().top" change detection problem.
 	$("#page_body > .global-message-banner").on("remove", function () { box_resize(); });
 
+	$(document).on('click','.cmd-reloadweb', function()
+	{
+		location.reload();
+	});
+
 	timerRefresInterval 	= 5000;
 	timerRefresIntervalRun 	= 1000;
 	box_resize();

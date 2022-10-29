@@ -6,17 +6,11 @@
  * 
  */
 namespace FreePBX\modules;
-// "Symfony\Component\Lock\Factory" is deprecated since Symfony 4.4 and will be removed in 5.0 use "Symfony\Component\Lock\LockFactory" instead
-use Symfony\Component\Lock\Factory;
-use Symfony\Component\Lock\Store\SemaphoreStore;
 
 include __DIR__."/vendor/autoload.php";
 
 class Synologyabb extends \FreePBX_Helpers implements \BMO {
 	
-	private $lock;
-	// See framework/hooks/yum-* commands where these files are defined
-
 	const LOCK_DIR  = "/dev/shm/abbwrapper";
 	const LOCK_FILE = "/dev/shm/abbwrapper/run.lock";
 	const LOGS_FILE = "/dev/shm/abbwrapper/output.log";
@@ -99,7 +93,11 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 
 	public function chownFreepbx() {
 		$files = array(
-			array('type' => 'execdir', 'path' => __DIR__."/hooks", 'perms' => 0755)
+			array(
+				'type' => 'execdir',
+				'path' => __DIR__."/hooks",
+				'perms' => 0755
+			),
 		);
 		return $files;
 	}
@@ -246,7 +244,7 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		}
 		else
 		{
-			// We wait 30 seconds to see if the file with the data is created and if the status change to END
+			// We wait for the number of seconds (default 30) that we specify to see if the file with the data is created and if the status changes to END
 			$maxloops 		 = $timeout * 4;
 			$sleeploop 		 = 250000;
 			$status_continue = array("END");
@@ -350,11 +348,11 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		$set['readonly'] = 0;
 		$set['hidden'] = 0;
 		$set['level'] = 0;
-		$set['module'] = $this->module_name; //'synologyabb';  //disabled as it generates error, Fix FREEPBX-22756
+		$set['module'] = $this->module_name; //Fix needed FREEPBX-22756
 		$set['category'] = 'Synology Active Backup for Business';
 		$set['emptyok'] = 1;
-		$set['name'] = 'Path for abb-cli';
-		$set['description'] = 'The default path to abb-cli. overwrite as needed.';
+		$set['name'] = _('Path for abb-cli');
+		$set['description'] = _('The default path to abb-cli. overwrite as needed.');
 		$set['type'] = CONF_TYPE_TEXT;
 		$this->config->define_conf_setting('SYNOLOGYABFBABBCLI', $set, true);
 		out(_("Done!"));
@@ -502,6 +500,7 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 			case "setagentreconnect":
 			case "setagentlogout":
 			case "runautoinstall":
+			case "runautoinstallstatus":
 				return true;
 				break;
 
@@ -519,6 +518,11 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 			case 'runautoinstall':
 				$data_return = array("status" => true, "data" => $this->runAutoInstallAgent());
 				break;
+
+			case 'runautoinstallstatus':
+				$data_return = array("status" => true, "data" => $this->runAutoInstallAgent(true));
+				break;
+
 			case 'getagentversiononline':
 				$data_return = array("status" => true, "data" => $this->getAgentVersionOnline(false));
 				break;
@@ -1001,7 +1005,7 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 				break;
 			
 			case self::ERROR_HOOK_RUN_TIMEOUT:
-				$msg = _("Hook run exccesd tiemout!");
+				$msg = _("Hook run exceeded tiemout!");
 				break;
 
 			case self::ERROR_MISSING_ARGS:
@@ -1109,10 +1113,6 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 		return $ret;
 	}
 
-
-
-	
-
 	
 	public function AutoInstallSaveInfo($data)
     {
@@ -1131,8 +1131,13 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 
     public function AutoInstallReadInfo()
     {
+		$data_return = array();
 		$json_file = self::INFO_FILE;
-        return json_decode(file_get_contents($json_file), true);
+		if (file_exists($json_file))
+		{
+			$data_return = json_decode(file_get_contents($json_file), true);
+		}
+		return $data_return;
     }
 
 	public function AutoInstallDelInfo()
@@ -1168,20 +1173,24 @@ class Synologyabb extends \FreePBX_Helpers implements \BMO {
 	public function AutoInstallReadOut($only_msg = false)
 	{
 		$file_log = self::LOGS_FILE;
-		$lines = file($file_log, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-		if ($only_msg)
+		$return_data = array();
+		if (file_exists($file_log))
 		{
-			$return_data = $lines;
-		}
-		else
-		{
-			$return_data = array_map(function($value, $i)
+			$lines = file($file_log, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+			if ($only_msg)
 			{
-				return(array(
-					"line" => $i,
-					"msg" => $value
-				));
-			}, $lines, range(1, count($lines)));
+				$return_data = $lines;
+			}
+			else
+			{
+				$return_data = array_map(function($value, $i)
+				{
+					return(array(
+						"line" => $i,
+						"msg" => $value
+					));
+				}, $lines, range(1, count($lines)));
+			}
 		}
 		return $return_data;
 	}
