@@ -1,6 +1,5 @@
 #!/usr/bin/env php
 <?php
-    
     include __DIR__."/hook.parse.args.php";
     $v = new \FreePBX\modules\Synologyabb\ParseArgs($argv, __FILE__);
     $settings = $v->getSettingAll();
@@ -8,6 +7,18 @@
     include_once '/etc/freepbx.conf';
     error_reporting(E_ALL);
     $syno = \FreePBX::Synologyabb();
+
+    function curl_progress_callback($resource, $download_size, $downloaded, $upload_size, $uploaded)
+    {
+        global $info;
+        global $syno;
+        if($download_size > 0)
+        {
+            $info['download']['download_size'] = $download_size;
+            $info['download']['downloaded']    = $downloaded;
+        }
+        $syno->AutoInstallSaveInfo($info);
+    }
 
     $error_code  = $syno::ERROR_NOT_DEFINED;
     $data_return = array(
@@ -33,251 +44,24 @@
     $info = array(
         'error'     => false,
         'error_msg' => "",
+        'end'       => false,
         'status'    => '',
+        'download'  => array(
+            'download_size' => "",
+            'downloaded'    => "",
+            'error'         => false,
+        ),
     );
     $error_code = $syno::ERROR_ALL_GOOD;
 
-    if ($syno->isAgentInstalled())
+    if ($syno->isAutoInstallRunning())
     {
-        $info['status']    = 'SKIP_ALREADY_INSTALLED';
-        $info['error_msg'] = _("Skip, agent already installed.");
-    }
-    else
-    {
-        $msg_err_run = array();    
-        if (! file_exists("/dev/shm"))
+        $info_tmp = $syno->AutoInstallReadInfo();
+        if ($info_tmp['end'] == true)
         {
-            $msg_err_run[] = _("ERROR There is no /dev/shm folder. Can not continue!");
-            $info['error']  = true;
-            $info['status'] = "END";
-        }
-        elseif ($syno->isAutoInstallRunning())
-        {
-            $info = $syno->AutoInstallReadInfo();
-        }
-        elseif (! $syno->AutoInstallCreateLockDir())
-        {
-            $msg_err_run[] = sprintf(_("ERROR Could not create working directory [%s]!"), $syno::LOCK_DIR);
-            $info['error']  = true;
-            $info['status'] = "END";
-        }
-        elseif (! $syno->AutoInstallLock())
-        {
-            $msg_err_run[] = sprintf(_("ERROR To create Lockfile [%s]!"), $syno::LOCK_FILE);
-            $info['error']  = true;
-            $info['status'] = "END";
-        } 
-        else
-        {
-            $syno->AutoInstallSetStatus("INIT", $info);
-            $syno->AutoInstallWriteOut('', false, false);   
-            
-
-            $last_version = $syno->getAgentVersionOnline(true, true);
-
-            $ver = array_key_first($last_version);
-            $url = $last_version[$ver];
-            $filename_zip = basename($url);
-
-            $temp_dir = tempnam(sys_get_temp_dir(), 'SynologyABB_');
-            @unlink($temp_dir);
-
-            if (mkdir($temp_dir))
+            if ($info_tmp['status'] == "ENDOK")
             {
-                $syno->AutoInstallSetStatus("DOWNLOADING", $info);
-                $syno->AutoInstallWriteOut(_("Downloading..."));
-
-                $temp_download_file = $temp_dir . "/" . $filename_zip;
-                $fp = fopen($temp_download_file, 'wb');
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $url);
-                curl_setopt($ch, CURLOPT_FILE, $fp);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 30); // timeout is 30 seconds, to download the large files you may need to increase the timeout limit.
-                // curl_setopt($ch, CURLOPT_HEADER, 0);
-                curl_exec($ch);
-                $error_curl = curl_error($ch);
-                if ($error_curl)
-                {
-                    $msg_err_run[] = sprintf(_("ERROR the cURL error is: %s"), curl_error($ch));
-                    $info['error']  = true;
-                    $info['status'] = "END";
-                }
-                else
-                {
-                    $status = curl_getinfo($ch);
-                    switch($status["http_code"])
-                    {
-                        case 200:
-                            $syno->AutoInstallSetStatus("DOWNLOADOK", $info);
-                            $syno->AutoInstallWriteOut( sprintf(_("Download compelted OK!"), $temp_download_file ));
-                            break;
-                        default:
-                            // the http status 200 means everything is going well. the error codes can be 401, 403 or 404.
-                            $msg_err_run[] = sprintf(_("ERROR The error code is: %s"), $status["http_code"]);
-                            $info['error']  = true;
-                            $info['status'] = "END";
-                    }
-                }
-                curl_close($ch);
-                fclose($fp);
-
-                if ($info['status'] == "DOWNLOADOK")
-                {
-                    $syno->AutoInstallSetStatus("EXTRACTING", $info);
-                    $syno->AutoInstallWriteOut( sprintf(_("Extractinf files (%s) in %s..."), $filename_zip, $temp_dir ));
-
-                    $zip = new ZipArchive;
-                    if ($zip->open($temp_download_file) !== TRUE)
-                    {
-                        $msg_err_run[] = sprintf(_("ERROR opening: %s"), $temp_download_file);
-                        $info['error']  = true;
-                        $info['status'] = "END";
-                    }
-                    else
-                    {
-                        $syno->AutoInstallWriteOut( sprintf(_("Open file (%s) OK!"), $temp_download_file));
-                        if(! $zip->extractTo($temp_dir))
-                        {
-                            $msg_err_run[] = sprintf(_("ERROR extractTo file [%s] in dir [%s]!"), $temp_download_file, $temp_dir);
-                            $info['error']  = true;
-                            $info['status'] = "END";
-                        }
-                        else
-                        {
-                            $syno->AutoInstallSetStatus("EXTRACTOK", $info);
-                            $syno->AutoInstallWriteOut(_("Extraction completed OK!"));
-
-                            $syno->AutoInstallWriteOut(_("Files Extracted:"));
-                            $d = dir($temp_dir);
-                            while (false !== ($entry = $d->read()))
-                            {
-                                if (in_array($entry, array(".", "..", $filename_zip)))
-                                {
-                                    continue;
-                                }
-                                $syno->AutoInstallWriteOut( sprintf(" %s  >>  %s", $filename_zip, $entry));
-                            }
-                            $d->close();
-
-                            $syno->AutoInstallSetStatus("INSTALLING", $info);
-                            $path_run_install = $temp_dir.'/install.run';
-                            $path_run_install_flags = $path_run_install . " --noprogress";
-                            if (! chmod($path_run_install, 0777) )
-                            {
-                                $msg_err_run[] = sprintf(_("ERROR to chmod file file [%s]!"), $path_run_install);
-                                $info['error']  = true;
-                                $info['status'] = "END";
-                            }
-                            else
-                            {
-                                $syno->AutoInstallWriteOut("Run: " . $path_run_install_flags);
-                                $descriptorspec = array(
-                                    0 => array("pipe", "r"), // stdin
-                                    1 => array("pipe", "w"), // stdout
-                                    2 => array("pipe", "w")  // stderr
-                                );
-                                $process = proc_open($path_run_install_flags, $descriptorspec, $pipes);
-                                if (! is_resource($process))
-                                {
-                                    $msg_err_run[] = _("ERROR cannot create resource process!");
-                                    $info['error']  = true;
-                                    $info['status'] = "END";
-                                }
-                                else
-                                {
-                                    $buffer_len  = $prev_buffer_len = 0;
-                                    $ms          = 10;
-                                    $read_output = true;
-                                    $read_error  = true;
-                                    stream_set_blocking($pipes[1], 0);
-                                    stream_set_blocking($pipes[2], 0);
-
-                                    while ($read_error != false or $read_output != false)
-                                    {
-                                        if ($read_output != false)
-                                        {
-                                            if(feof($pipes[1]))
-                                            {
-                                                fclose($pipes[1]);
-                                                $read_output = false;
-                                            }
-                                            else
-                                            {
-                                                $str = fgets($pipes[1], 1024);
-                                                $len = strlen($str);
-                                                if ($len)
-                                                {
-                                                    if ( (trim($str) == ".") || (empty(trim($str))) )
-                                                    {
-                                                        continue;
-                                                    }
-                                                    $syno->AutoInstallWriteOut("stdout > " . $str);
-                                                    $buffer_len += $len;
-                                                }
-                                            }
-                                        }
-                                    
-                                        if ($read_error != false)
-                                        {
-                                            if(feof($pipes[2]))
-                                            {
-                                                fclose($pipes[2]);
-                                                $read_error = false;
-                                            }
-                                            else
-                                            {
-                                                $str = fgets($pipes[2], 1024);
-                                                $len = strlen($str);
-                                                if ($len)
-                                                {
-                                                    $syno->AutoInstallWriteOut("stderr > " . $str);
-                                                    $msg_err_run[] = sprintf(_("stderr: %s"), $str);
-                                                    $buffer_len += $len;
-                                                }
-                                            }
-                                        }
-                                    
-                                        if ($buffer_len > $prev_buffer_len)
-                                        {
-                                            $prev_buffer_len = $buffer_len;
-                                            $ms = 10;
-                                        }
-                                        else
-                                        {
-                                            usleep($ms * 1000); // sleep for $ms milliseconds
-                                            if ($ms < 160)
-                                            {
-                                                $ms = $ms * 2;
-                                            }
-                                        }
-                                    }
-
-                                    $info['process'] = proc_get_status($process);
-                                    if ($info['process']['exitcode'] != 0) 
-                                    {
-                                        $info['error']  = true;
-                                    }
-                                    $syno->AutoInstallSetStatus("ENDOK", $info);
-                                    
-                                    $ret = proc_close($process);        
-                                }
-                            }
-                        }
-                        $zip->close();
-                    }
-                }
-            }
-
-            if (is_dir($temp_dir))
-            {
-                $exception = null;
-                if ( ! $syno->AutoInstallDelDirTemp($temp_dir, $exception) )
-                {
-                    if (! is_null($exception))
-                    {
-                        $msg_err_run[] = sprintf(_("ERROR deleting directory at: %s"), $exception->getPath());
-                    }
-                }
+                $syno->AutoInstallSetStatus("END", $info_tmp);
             }
 
             if (! $syno->AutoInstallUnlock())
@@ -288,16 +72,294 @@
             // {
             //     $msg_err[] = sprintf(_("ERROR Outfile [%s] could not be deleted!"), $syno::LOGS_FILE);
             // }
+            // if (! $syno->AutoInstallDelInfo())
+            // {
+            //     $msg_err[] = sprintf(_("ERROR Infofile [%s] could not be deleted!"), $syno::INFO_FILE);
+            // }
+        }
+        else
+        {
+            $info = $info_tmp;
+        }
+    }
+    else
+    {
+        if ($syno->isAgentInstalled())
+        {
+            $info['status']    = 'SKIP_ALREADY_INSTALLED';
+            $info['error_msg'] = _("Skip, agent already installed.");
+        }
+        else if ($settings['readonly'] == true)
+        {
+            // Skip
+        }
+        else
+        {
+            $msg_err_run = array();    
+            if (! file_exists("/dev/shm"))
+            {
+                $msg_err_run[] = _("ERROR There is no /dev/shm folder. Can not continue!");
+                $info['error']  = true;
+                $info['status'] = "ENDERROR";
+                $syno->AutoInstallSaveInfo($info);
+            }
+            elseif (! $syno->AutoInstallCreateLockDir())
+            {
+                $msg_err_run[] = sprintf(_("ERROR Could not create working directory [%s]!"), $syno::LOCK_DIR);
+                $info['error']  = true;
+                $info['status'] = "ENDERROR";
+                $syno->AutoInstallSaveInfo($info);
+            }
+            elseif (! $syno->AutoInstallLock())
+            {
+                $msg_err_run[] = sprintf(_("ERROR To create Lockfile [%s]!"), $syno::LOCK_FILE);
+                $info['error']  = true;
+                $info['status'] = "ENDERROR";
+                $syno->AutoInstallSaveInfo($info);
+            } 
+            else
+            {
+                $syno->AutoInstallSetStatus("INIT", $info);
+                $syno->AutoInstallWriteOut('', false, false);   
+
+                $last_version = $syno->getAgentVersionOnline(true, true);
+
+                $ver = array_key_first($last_version);
+                $url = $last_version[$ver];
+                $filename_zip = basename($url);
+
+                $temp_dir = tempnam(sys_get_temp_dir(), 'SynologyABB_');
+                @unlink($temp_dir);
+
+                if (mkdir($temp_dir))
+                {
+                    $syno->AutoInstallSetStatus("DOWNLOADING", $info);
+                    $syno->AutoInstallWriteOut(_("Downloading..."));
+                    $syno->AutoInstallWriteOut('<div class="progress"><div id="progressBarDownload" class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"><span class="sr-only">0%</span></div></div>');
+
+                    $temp_download_file = $temp_dir . "/" . $filename_zip;
+                    $fp = fopen($temp_download_file, 'wb');
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, $url);
+                    curl_setopt($ch, CURLOPT_FILE, $fp);
+
+                    curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, 'curl_progress_callback');
+                    curl_setopt($ch, CURLOPT_NOPROGRESS, false); // needed to make progress function work
+
+                    // ** Testing limit speed and error tiemout. **
+                    // curl_setopt($ch, CURLOPT_TIMEOUT, 5); // timeout is 5 seconds, to download the large files you may need to increase the timeout limit.
+                    // curl_setopt($ch, CURLOPT_MAX_RECV_SPEED_LARGE, 1000000);
+                    // ********************************************
+
+                    // curl_setopt($ch, CURLOPT_HEADER, 0);
+                    curl_exec($ch);
+                    $error_curl = curl_error($ch);
+                    if ($error_curl)
+                    {
+                        $msg_err_run[] = sprintf(_("ERROR the cURL error is: %s"), curl_error($ch));
+                        $info['download']['error'] = true;
+                        $info['error']  = true;
+                        $info['status'] = "DOWNLOADERR";
+                        $syno->AutoInstallSaveInfo($info);
+                    }
+                    else
+                    {
+                        $status = curl_getinfo($ch);
+                        switch($status["http_code"])
+                        {
+                            case 200:
+                                $syno->AutoInstallSetStatus("DOWNLOADOK", $info);
+                                $syno->AutoInstallWriteOut( sprintf(_("Download compelted OK!"), $temp_download_file ));
+                                break;
+                            default:
+                                // the http status 200 means everything is going well. the error codes can be 401, 403 or 404.
+                                $msg_err_run[] = sprintf(_("ERROR The error code is: %s"), $status["http_code"]);
+                                $info['download']['error'] = true;
+                                $info['error']  = true;
+                                $info['status'] = "DOWNLOADERR";
+                                $syno->AutoInstallSaveInfo($info);
+                        }
+                    }
+                    curl_close($ch);
+                    fclose($fp);
+
+                    if ($info['status'] == "DOWNLOADOK")
+                    {
+                        $syno->AutoInstallSetStatus("EXTRACTING", $info);
+                        $syno->AutoInstallWriteOut( sprintf(_("Extractinf files (%s) in %s..."), $filename_zip, $temp_dir ));
+
+                        $zip = new ZipArchive;
+                        if ($zip->open($temp_download_file) !== TRUE)
+                        {
+                            $msg_err_run[] = sprintf(_("ERROR opening: %s"), $temp_download_file);
+                            $info['error']  = true;
+                            $info['status'] = "ENDERROR";
+                            $syno->AutoInstallSaveInfo($info);
+                        }
+                        else
+                        {
+                            $syno->AutoInstallWriteOut( sprintf(_("Open file (%s) OK!"), $temp_download_file));
+                            if(! $zip->extractTo($temp_dir))
+                            {
+                                $msg_err_run[] = sprintf(_("ERROR extractTo file [%s] in dir [%s]!"), $temp_download_file, $temp_dir);
+                                $info['error']  = true;
+                                $info['status'] = "ENDERROR";
+                                $syno->AutoInstallSaveInfo($info);
+                            }
+                            else
+                            {
+                                $syno->AutoInstallSetStatus("EXTRACTOK", $info);
+                                $syno->AutoInstallWriteOut(_("Extraction completed OK!"));
+
+                                $syno->AutoInstallWriteOut(_("Files Extracted:"));
+                                $d = dir($temp_dir);
+                                while (false !== ($entry = $d->read()))
+                                {
+                                    if (in_array($entry, array(".", "..", $filename_zip)))
+                                    {
+                                        continue;
+                                    }
+                                    $syno->AutoInstallWriteOut( sprintf(" %s  >>  %s", $filename_zip, $entry));
+                                }
+                                $d->close();
+
+                                $syno->AutoInstallSetStatus("INSTALLING", $info);
+                                $path_run_install = $temp_dir.'/install.run';
+                                $path_run_install_flags = $path_run_install . " --noprogress";
+                                if (! chmod($path_run_install, 0777) )
+                                {
+                                    $msg_err_run[] = sprintf(_("ERROR to chmod file file [%s]!"), $path_run_install);
+                                    $info['error']  = true;
+                                    $info['status'] = "ENDERROR";
+                                    $syno->AutoInstallSaveInfo($info);
+                                }
+                                else
+                                {
+                                    $syno->AutoInstallWriteOut("Run: " . $path_run_install_flags);
+                                    $descriptorspec = array(
+                                        0 => array("pipe", "r"), // stdin
+                                        1 => array("pipe", "w"), // stdout
+                                        2 => array("pipe", "w")  // stderr
+                                    );
+                                    $process = proc_open($path_run_install_flags, $descriptorspec, $pipes);
+                                    if (! is_resource($process))
+                                    {
+                                        $msg_err_run[] = _("ERROR cannot create resource process!");
+                                        $info['error']  = true;
+                                        $info['status'] = "ENDERROR";
+                                        $syno->AutoInstallSaveInfo($info);
+                                    }
+                                    else
+                                    {
+                                        $buffer_len  = $prev_buffer_len = 0;
+                                        $ms          = 10;
+                                        $read_output = true;
+                                        $read_error  = true;
+                                        stream_set_blocking($pipes[1], 0);
+                                        stream_set_blocking($pipes[2], 0);
+
+                                        while ($read_error != false or $read_output != false)
+                                        {
+                                            if ($read_output != false)
+                                            {
+                                                if(feof($pipes[1]))
+                                                {
+                                                    fclose($pipes[1]);
+                                                    $read_output = false;
+                                                }
+                                                else
+                                                {
+                                                    $str = fgets($pipes[1], 1024);
+                                                    $len = strlen($str);
+                                                    if ($len)
+                                                    {
+                                                        if ( (trim($str) == ".") || (empty(trim($str))) )
+                                                        {
+                                                            continue;
+                                                        }
+                                                        $syno->AutoInstallWriteOut("stdout > " . $str);
+                                                        $buffer_len += $len;
+                                                    }
+                                                }
+                                            }
+                                        
+                                            if ($read_error != false)
+                                            {
+                                                if(feof($pipes[2]))
+                                                {
+                                                    fclose($pipes[2]);
+                                                    $read_error = false;
+                                                }
+                                                else
+                                                {
+                                                    $str = fgets($pipes[2], 1024);
+                                                    $len = strlen($str);
+                                                    if ($len)
+                                                    {
+                                                        $syno->AutoInstallWriteOut("stderr > " . $str);
+                                                        $msg_err_run[] = sprintf(_("stderr: %s"), $str);
+                                                        $buffer_len += $len;
+                                                    }
+                                                }
+                                            }
+                                        
+                                            if ($buffer_len > $prev_buffer_len)
+                                            {
+                                                $prev_buffer_len = $buffer_len;
+                                                $ms = 10;
+                                            }
+                                            else
+                                            {
+                                                usleep($ms * 1000); // sleep for $ms milliseconds
+                                                if ($ms < 160)
+                                                {
+                                                    $ms = $ms * 2;
+                                                }
+                                            }
+                                        }
+
+                                        $info['process'] = proc_get_status($process);
+                                        if ($info['process']['exitcode'] != 0) 
+                                        {
+                                            $info['error']  = true;
+                                        }
+                                        $syno->AutoInstallSetStatus("ENDOK", $info);
+                                        
+                                        $ret = proc_close($process);        
+                                    }
+                                }
+                            }
+                            $zip->close();
+                        }
+                    }
+                }
+
+                if (is_dir($temp_dir))
+                {
+                    $exception = null;
+                    if ( ! $syno->AutoInstallDelDirTemp($temp_dir, $exception) )
+                    {
+                        if (! is_null($exception))
+                        {
+                            $msg_err_run[] = sprintf(_("ERROR deleting directory at: %s"), $exception->getPath());
+                        }
+                    }
+                }
+
+                $info['end'] = true;
+                $syno->AutoInstallSaveInfo($info);
+            }
+
+            foreach ($msg_err_run as $errMsg)
+            {
+                if (empty($errMsg)) { continue; }
+                $syno->logger->error( sprintf("%s - Code (%s): %s", __FILE__, "???", $errMsg) ) ;
+                $syno->AutoInstallWriteOut($errMsg);
+            }
+            $info['error_msg'] = $msg_err_run;
+            $syno->AutoInstallSaveInfo($info);
         }
 
-        foreach ($msg_err_run as $errMsg)
-        {
-            if (empty($errMsg)) { continue; }
-            $syno->logger->error( sprintf("%s - Code (%s): %s", __FILE__, "???", $errMsg) ) ;
-            $syno->AutoInstallWriteOut($errMsg);
-        }
-        $info['error_msg'] = $msg_err_run;
-        $syno->AutoInstallSaveInfo($info);
     }
 
     $data_return['data'] = $info;

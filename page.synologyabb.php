@@ -3,12 +3,16 @@
     $synoClass = \FreePBX::create()->Synologyabb;
 ?>
 <h1><?php echo _("Synology Active Backup for Business"); ?></h1>
-<div id="box_loading" class="loader-background">
-    <div class="background-opacity">
+
+<div id="box_loading">
+    <div class="box_loading_msgbox">
         <h1><?php echo _("Please Wait..."); ?></h1>
+        <div class="fa-5x box_loading_spin">
+            <i class="fa fa-spinner fa-pulse"></i>
+        </div>
     </div>
-    <div class="loader"></div>
 </div>
+
 <div class="container-fluid">
 	<div class="row">
 		<div class="col-sm-12">
