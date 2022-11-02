@@ -2,13 +2,14 @@
     <rawname>synologyabb</rawname>
     <repo>unsupported</repo>
     <name>Synology Active Backup for Business</name>
-    <version>16.0.1</version>
+    <version>16.0.2</version>
     <category>Admin</category>
     <description>Interface to configure and monitor backup status with synology active backup for business</description>
     <more-info>https://wiki.freepbx.org/display/FPG/PBX+GUI+Home</more-info>
     <changelog>
+		*16.0.2* Packaging of ver 16.0.2
         *16.0.1* Initial release
-    </changelog>
+	</changelog>
     <depends>
         <module>framework ge 16.0.26</module>
     </depends>
