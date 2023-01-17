@@ -22,10 +22,10 @@
     	<version>16.0</version>
     </supported>
     <console>
-	 <command>
-		<name>synologyabb</name>
-        	<class>Synologyabb</class>
-	</command>
+        <command>
+		    <name>synologyabb</name>
+            <class>Synologyabb</class>
+	    </command>
     </console>
     <hooks>
 		<dashboard class="Overview" namespace="FreePBX\modules\Dashboard\Sections">
